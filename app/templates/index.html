@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple UI</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: white;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            display: flex;
+            flex-direction: row;
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            overflow: hidden;
+            width: 90vw; /* Increased width */
+            height: 90vh; /* Increased height to fit screen height */
+        }
+        .sidebar {
+            width: 300px;
+            padding: 20px;
+            border-right: 1px solid #333;
+            overflow-y: auto; /* Added to enable scrolling */
+        }
+        .content {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .message{
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .settings,
+        .messages {
+            margin-bottom: 20px;
+        }
+        .documents {
+            margin-bottom: 20px;
+        }
+        .messages textarea {
+            width: 100%;
+            height: 100px;
+            background-color: #333;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            padding: 10px;
+            resize: none;
+        }
+        .output {
+            flex: 1;
+            background-color: #333;
+            border-radius: 4px;
+            padding: 20px;
+        }
+        .settings label,
+        .messages label,
+        .documents label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .settings select,
+        .settings input,
+        
+        .messages textarea {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            background-color: #333;
+            border: none;
+            border-radius: 4px;
+            color: white;
+        }
+        .settings .inline-input {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .settings .inline-input label {
+            margin-right: 10px;
+            flex: 1;
+        }
+        .settings .inline-input input {
+            flex: 2;
+        }
+        .documents input[type="checkbox"] {
+            margin-right: 10px;
+        }
+        .documents .document-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .settings button,
+        .message button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .settings button:hover,
+        .message button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <form id="settings-form" method="POST" action="/settings">
+                <div class="settings">
+                    <h3>Settings</h3>
+                    <label for="model">Model</label>
+                    <select id="model" name="model">
+                        <option value="" {% if not settings.model %}selected{% endif %}>Select a model</option>
+                        <option value="model1" {% if settings.model == 'model1' %}selected{% endif %}>Model 1</option>
+                        <option value="model2" {% if settings.model == 'model2' %}selected{% endif %}>Model 2</option>
+                    </select>
+                    <div class="inline-input">
+                        <label for="temperature">Temperature</label>
+                        <input type="number" id="temperature" name="temperature" value="{{ settings.temperature }}" step="0.1" min="0" max="1">
+                    </div>
+                    <div class="inline-input">
+                        <label for="top_p">Top P</label>
+                        <input type="number" id="top_p" name="top_p" value="{{ settings.top_p }}" step="0.1" min="0" max="1">
+                    </div>
+                    <div class="inline-input">
+                        <label for="top_k">Top K</label>
+                        <input type="number" id="top_k" name="top_k" value="{{ settings.top_k }}" step="1" min="1" max="10">
+                    </div>
+                </div>
+
+                <div class="messages">
+                    <h3>Messages</h3>
+                    <label for="system_prompt">System Prompt</label>
+                    <textarea id="system_prompt" name="system_prompt" placeholder="You are a...">{{ settings.system_prompt }}</textarea>
+                </div>
+
+                <div class="documents">
+                    <h3>Documents</h3>
+                    <label for="documents">Select Documents</label>
+                    <div id="documents">
+                        {% for document in documents %}
+                            <div class="document-item">
+                                <input type="checkbox" id="{{ document }}" name="documents" value="{{ document }}" {% if document in settings.documents %}checked{% endif %}>
+                                <label for="{{ document }}">{{ document }}</label>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <button type="submit">Save Settings</button>
+            </form>
+        </div>
+        <div class="content">
+            <div class="output">
+                <h3>Output</h3>
+                <p>{{ message }}</p>
+            </div>
+            <form id="message-form" method="POST" action="/send_message">
+                <div class="message">
+                    <textarea id="message" name="message" placeholder="Type your message here..."></textarea>
+                    <button type="submit">Send Message</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
