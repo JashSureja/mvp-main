@@ -4,9 +4,9 @@ from flask import Flask
 from .extensions import db
 from .routes import main
 
-def create_app():
+def create_app(debug=False):
     app = Flask(__name__)
-    from app.langchain import LangChain
+    from app.langchain_copy import LangChain
 
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
     app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -18,7 +18,9 @@ def create_app():
 
     app.register_blueprint(main)
     langchain = LangChain()
-    
+    if debug:
+        app.config['DEBUG'] = True
+
 
     app.config["LANGCHAIN"] = langchain
     return app

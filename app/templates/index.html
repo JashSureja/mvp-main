@@ -36,6 +36,7 @@
             padding: 20px;
             display: flex;
             flex-direction: column;
+            overflow-y: auto;
         }
         .message{
             flex: 1;
@@ -64,6 +65,7 @@
             background-color: #333;
             border-radius: 4px;
             padding: 20px;
+            overflow-y: auto;
         }
         .settings label,
         .messages label,
@@ -119,6 +121,19 @@
         .message button:hover {
             background-color: #45a049;
         }
+        .toggle-input {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .toggle-input label {
+            margin-right: 10px;
+            flex: 1;
+        }
+        .toggle-input input {
+            flex: 0;
+        }
     </style>
 </head>
 <body>
@@ -127,11 +142,20 @@
             <form id="settings-form" method="POST" action="/settings">
                 <div class="settings">
                     <h3>Settings</h3>
-                    <label for="model">Model</label>
-                    <select id="model" name="model">
-                        <option value="" {% if not settings.model %}selected{% endif %}>Select a model</option>
-                        <option value="model1" {% if settings.model == 'model1' %}selected{% endif %}>Model 1</option>
-                        <option value="model2" {% if settings.model == 'model2' %}selected{% endif %}>Model 2</option>
+                    <label for="provider">Main Model</label>
+                    <select id="provider" name="provider">
+                        <option value="" {% if not settings.provider %}selected{% endif %}>Select a main model</option>
+                        <option value="openai" {% if settings.provider == 'openai' %}selected{% endif %}>OpenAI</option>
+                        <option value="anthropic" {% if settings.provider == 'anthropic' %}selected{% endif %}>Anthropic</option>
+                        <option value="cohere" {%  if settings.provider == 'cohere' %}selected{% endif %}>Cohere</option>
+                        <option value="fireworks" {%  if settings.provider == 'fireworks' %}selected{% endif %}>Fireworks</option>
+                        <option value="google" {%  if settings.provider == 'google' %}selected{% endif %}>Google</option>
+                        
+                    </select>
+                    
+                    <select id="model_name" name="model_name">  
+                        
+                        
                     </select>
                     <div class="inline-input">
                         <label for="temperature">Temperature</label>
@@ -144,6 +168,14 @@
                     <div class="inline-input">
                         <label for="top_k">Top K</label>
                         <input type="number" id="top_k" name="top_k" value="{{ settings.top_k }}" step="1" min="1" max="10">
+                    </div>
+                    <div class="toggle-input">
+                        <label for="cite_sources">Cite Sources</label>
+                        <input type="checkbox" id="cite_sources" name="cite_sources" {% if settings.cite_sources %}checked{% endif %}>
+                    </div>
+                    <div class="toggle-input">
+                        <label for="chat_history">Chat History</label>
+                        <input type="checkbox" id="chat_history" name="chat_history" {% if settings.chat_history %}checked{% endif %}>
                     </div>
                 </div>
 
@@ -173,6 +205,7 @@
             <div class="output">
                 <h3>Output</h3>
                 <p>{{ message }}</p>
+                <p>{{ sources }}</p>
             </div>
             <form id="message-form" method="POST" action="/send_message">
                 <div class="message">
@@ -182,5 +215,62 @@
             </form>
         </div>
     </div>
+
+    <script>
+        document.getElementById('provider').addEventListener('change', function() {
+            const mainModel = this.value;
+            const subModelSelect = document.getElementById('model_name');
+
+            // Clear current options
+            subModelSelect.innerHTML = '<option value="">Select a sub model</option>';
+
+            // Populate sub-models based on main model selection
+            if (mainModel === 'openai') {
+                subModelSelect.innerHTML += `
+                    <option value="gpt-4o" {% if settings.model_name == 'gpt-4o' %}selected{% endif %} >gpt-4o</option>
+                    <option value="gpt-4-turbo" {% if settings.model_name == 'gpt-4-turbo' %}selected{% endif %}>gpt-4-turbo</option>
+                    <option value="gpt-4" {% if settings.model_name == 'gpt-4' %}selected{% endif %}>gpt-4</option>
+                    <option value="gpt-3.5-turbo" {% if settings.model_name == 'gpt-3.5-turbo' %}selected{% endif %}>gpt-3.5-turbo</option>
+                `;
+            } else if (mainModel === 'anthropic') {
+                subModelSelect.innerHTML += `
+                    <option value="claude-3-opus-20240229" {% if settings.model_name == 'claude-3-opus-20240229' %}selected{% endif %} >claude-3-opus-20240229</option>
+                    <option value="claude-3-sonnet-20240229" {% if settings.model_name == 'claude-3-sonnet-20240229' %}selected{% endif %} >claude-3-sonnet-20240229</option>
+                    <option value="claude-3-haiku-20240307" {% if settings.model_name == 'claude-3-haiku-20240307' %}selected{% endif %} >claude-3-haiku-20240307</option>
+                
+                `;
+            } else if (mainModel === 'cohere') {
+                subModelSelect.innerHTML += `
+                    <option value="command-r" {% if settings.model_name == 'command-r' %}selected{% endif %}>command-r</option>
+                    <option value="command-r" {% if settings.model_name == 'command-r-plus' %}selected{% endif %}>command-r</option>
+                            
+                `;
+            } else if (mainModel === 'fireworks') {
+                subModelSelect.innerHTML += `
+                    <option value="accounts/fireworks/models/firefunction-v2" {% if settings.model_name == 'accounts/fireworks/models/firefunction-v2' %}selected{% endif %}>firefunction-v2</option>
+                    <option value="accounts/fireworks/models/mixtral-8x7b-instruct" {% if settings.model_name == 'accounts/fireworks/models/mixtral-8x7b-instruct' %}selected{% endif %}>mixtral-8x7b-instruct</option>
+                    <option value="accounts/fireworks/models/mixtral-8x22b-instruct" {% if settings.model_name == 'accounts/fireworks/models/mixtral-8x22b-instruct' %}selected{% endif %}>mixtral-8x22b-instruct</option>
+                    <option value="accounts/fireworks/models/llama-v3-70b-instruct" {% if settings.model_name == 'accounts/fireworks/models/llama-v3-70b-instruct' %}selected{% endif %}>llama-v3-70b-instruct</option>
+                    <option value="accounts/fireworks/models/bleat-adapter" {% if settings.model_name == 'accounts/fireworks/models/bleat-adapter' %}selected{% endif %}>bleat-adapter</option>
+                           
+                `;
+            } else if (mainModel === 'google') {
+                subModelSelect.innerHTML += `
+                    <option value="gemini-1.5-flash" {% if settings.model_name == 'gemini-1.5-flash' %}selected{% endif %}>gemini-1.5-flash</option>
+                    <option value="gemini-1.5-pro" {% if settings.model_name == 'gemini-1.5-pro' %}selected{% endif %}>gemini-1.5-pro</option>
+                    <option value="gemini-1.0-pro" {% if settings.model_name == 'gemini-1.0-pro' %}selected{% endif %}>gemini-1.0-pro</option>
+                    <option value="chat-bison" {% if settings.model_name == 'chat-bison' %}selected{% endif %}>chat-bison</option>
+                    <option value="text-bison" {% if settings.model_name == 'text-bison' %}selected{% endif %}>text-bison</option>
+                    <option value="text-unicorn" {% if settings.model_name == 'text-unicorn' %}selected{% endif %}>text-unicorn</option>
+                    // <option value="medlm-medium" {% if settings.model_name == 'medlm-medium' %}selected{% endif %}>medlm-medium</option>
+                    // <option value="medlm-large" {% if settings.model_name == 'medlm-large' %}selected{% endif %}>medlm-large</option>       
+                `;
+            }
+        });
+
+        // Trigger change event to populate sub-models if a main model is already selected
+        document.getElementById('provider').dispatchEvent(new Event('change'));
+
+    </script>
 </body>
 </html>

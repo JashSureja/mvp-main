@@ -9,10 +9,11 @@ from .models import User
 
 main = Blueprint('main', __name__)
 settings_params = {
-    'model': '',
+    'provider': '',
+    'model_name':  '',
     'temperature': 0.4,
     'top_p': 0.7,
-    'top_k': 0.0,
+    'top_k': 3,
     'system_prompt': '',
     'documents': []
 }
@@ -35,19 +36,24 @@ def index():
 def chat():
     
     global settings_params
-    # langchain = current_app.config["LANGCHAIN"]
+    langchain = current_app.config["LANGCHAIN"]
     data = request.form
     settings_params = {
-        'model': data.get('model', ''),
+        'provider': data.get('provider', ''),
+        'model_name': data.get('model_name', ''),
         'temperature': data.get('temperature', 0.4),
         'top_p': data.get('top_p', 0.7),
-        'top_k': data.get('top_k', 5),
+        'top_k': data.get('top_k', 3),
         'system_prompt': data.get('system_prompt', ''),
+        'cite_sources': data.get('cite_sources', ''),
+        'chat_history': data.get('chat_history',''),
         'documents': data.getlist('documents')
     }
     print(settings_params)
+    documents=settings_params['documents']
+    langchain.connect_vectorstores(documents, settings_params)
 
-    return render_template('index.html', settings=settings_params, message="Settings saved successfully!", documents=settings_params['documents'])
+    return render_template('index.html', settings=settings_params, message="Settings saved successfully!", documents=documents)
 
 @main.route('/send_message', methods=['POST'])
 def send_message():
@@ -55,10 +61,17 @@ def send_message():
     langchain = current_app.config["LANGCHAIN"]
     global settings_params
     message = request.form.get('message')
-    documents=settings_params['documents']
-    vectorstore = langchain.connect_vectorstores(documents, settings_params['top_k'])
-    response = vectorstore.similarity_search(message)
-    return render_template('index.html', settings=settings_params, message=response, documents=documents)
+    cite_sources = settings_params.get('cite_sources')
+    response = langchain.get_response(message)
+    if cite_sources == "on":
+        sources = ["Sources:-"]
+        for doc in response['context']:
+            sources.append(doc.metadata['source'])
+        
+        
+        return render_template('index.html', settings=settings_params, message=response['answer'], sources=sources, documents=settings_params['documents'])
+    else:    
+        return render_template('index.html', settings=settings_params, message=response["answer"], sources='', documents=settings_params['documents'])
 
 
 @main.route('/upload', methods=['POST'])
@@ -75,7 +88,7 @@ def upload_file():
         if file.filename != '':
             settings_params['documents'].append(file.filename)
             file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], file.filename))
-    langchain.call_pgvector("org_1", "project_1", files, chunk_size, chunk_overlap)
+            langchain.call_pgvector("org_1", "project_1", file, chunk_size, chunk_overlap)
 
 
 
