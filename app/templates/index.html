@@ -23,6 +23,9 @@
         #settings-sidebar{
             height: 61.5vh;
         }
+        #documents-sidebar{
+            height: 45vh;
+        }
     </style>    
 </head>
 
@@ -35,32 +38,9 @@
                 <button id="nav-documents" class="w-full p-2 bg-gray-600 rounded hover:bg-gray-500">Grounding</button>
                 <button id="nav-settings" class="w-full p-2 bg-gray-600 rounded hover:bg-gray-500">Configurations</button>
             </div>
-            <!-- Documents Sidebar -->
-            <!-- <div id="documents-sidebar" class="p-4 border-r border-gray-700 overflow-y-auto hidden flex-1">
-                <form id="documents-form" method="POST" action="/documents">
-                    <div class="mb-6">
-                        <h3 class="text-xl mb-2">Documents</h3>
-                        <label for="documents" class="block mb-2">Select Documents</label>
-                        <div id="documents" class="space-y-2">
-                            {% for document in documents %}
-                            <div class="flex items-center space-x-2">
-                                <input type="checkbox" id="{{ document }}" name="documents" value="{{ document }}" {% if document in settings.documents %}checked{% endif %} class="text-gray-900">
-                                <label for="{{ document }}">{{ document }}</label>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </form>
-                <h3 class="text-xl mb-2">Upload More Documents</h3>
-                <form action="/upload" method="POST" enctype="multipart/form-data" class="space-y-2">
-                    <input type="file" name="documents" multiple class="text-gray-300">
-                    <button type="submit" class="w-full p-2 bg-green-600 rounded hover:bg-green-500">Upload</button>
-                </form>
-                <button form="document-form" type="submit" class="w-full p-2 bg-blue-600 rounded hover:bg-green-500 mt-4">Save Settings</button>
-            </div> -->
             
             <!-- Settings Sidebar -->
-            <div class="p-3 border-r border-gray-700 overflow-y-auto flex-1 ">
+            <div class="p-3 border-r border-gray-700 overflow-y-auto flex-1" id="parent-sidebar">
                 <form id="settings-form" method="POST" action="/settings">
                     <div id="settings-sidebar" class="mb-6 border border-gray-600 p-4 rounded overflow-y-scroll scrollbar-thin">
                         <!-- <h3 class="text-xl mb-2">Configurations</h3> -->
@@ -105,7 +85,7 @@
 
                     
                     
-                    <div id="documents-sidebar" class="mb-6 border border-gray-600 p-2 rounded hidden overflow-y-scroll h-80 scrollbar-thin">
+                    <div id="documents-sidebar" class="mb-6 border border-gray-600 p-2 rounded hidden overflow-y-scroll scrollbar-thin">
                         <h3 class="text-xl mb-2">Grounding</h3>
                         <label for="documents" class="block mb-2">Select Documents</label>
                         <div id="documents" class="space-y-2">
@@ -121,7 +101,7 @@
                 </form>
                 <form id="upload-form" action="/upload" method="POST" enctype="multipart/form-data" class="space-y-2 hidden">
                     <h5 class="text-xl mb-2 p-0">Upload More Documents</h5>
-                    <input class="block w-50 text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" aria-describedby="file_input_help" id="file_input" type="file" multiple>
+                    <input class="block w-4/5 text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" aria-describedby="file_input_help" id="file_input" type="file" name="documents" multiple>
 
                     <button form="upload-form" type="submit" class="w-20 p-1 bg-green-600 rounded hover:bg-green-500">Upload</button>
                 </form>
