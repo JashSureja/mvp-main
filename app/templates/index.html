@@ -1,223 +1,152 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simple UI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #121212;
-            color: white;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+        .scrollbar-thin::-webkit-scrollbar {
+            width: 6px; /* Width of the scrollbar */
         }
-        .container {
-            display: flex;
-            flex-direction: row;
-            background-color: #1e1e1e;
-            border-radius: 8px;
-            overflow: hidden;
-            width: 90vw; /* Increased width */
-            height: 90vh; /* Increased height to fit screen height */
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: #5f5f5f; /* Track color */
         }
-        .sidebar {
-            width: 300px;
-            padding: 20px;
-            border-right: 1px solid #333;
-            overflow-y: auto; /* Added to enable scrolling */
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: #3f3f3f; /* Thumb color */
         }
-        .content {
-            flex: 1;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+            background: #333232; /* Thumb color on hover */
         }
-        .message{
-            flex: 1;
-            display: flex;
-            flex-direction: column;
+        #settings-sidebar{
+            height: 61.5vh;
         }
-        .settings,
-        .messages {
-            margin-bottom: 20px;
-        }
-        .documents {
-            margin-bottom: 20px;
-        }
-        .messages textarea {
-            width: 100%;
-            height: 100px;
-            background-color: #333;
-            border: none;
-            border-radius: 4px;
-            color: white;
-            padding: 10px;
-            resize: none;
-        }
-        .output {
-            flex: 1;
-            background-color: #333;
-            border-radius: 4px;
-            padding: 20px;
-            overflow-y: auto;
-        }
-        .settings label,
-        .messages label,
-        .documents label {
-            display: block;
-            margin-bottom: 5px;
-        }
-        .settings select,
-        .settings input,
-        
-        .messages textarea {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 10px;
-            background-color: #333;
-            border: none;
-            border-radius: 4px;
-            color: white;
-        }
-        .settings .inline-input {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .settings .inline-input label {
-            margin-right: 10px;
-            flex: 1;
-        }
-        .settings .inline-input input {
-            flex: 2;
-        }
-        .documents input[type="checkbox"] {
-            margin-right: 10px;
-        }
-        .documents .document-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 5px;
-        }
-        .settings button,
-        .message button {
-            width: 100%;
-            padding: 10px;
-            background-color: #4CAF50;
-            border: none;
-            border-radius: 4px;
-            color: white;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        .settings button:hover,
-        .message button:hover {
-            background-color: #45a049;
-        }
-        .toggle-input {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .toggle-input label {
-            margin-right: 10px;
-            flex: 1;
-        }
-        .toggle-input input {
-            flex: 0;
-        }
-    </style>
+    </style>    
 </head>
-<body>
-    <div class="container">
-        <div class="sidebar">
-            <form id="settings-form" method="POST" action="/settings">
-                <div class="settings">
-                    <h3>Settings</h3>
-                    <label for="provider">Main Model</label>
-                    <select id="provider" name="provider">
-                        <option value="" {% if not settings.provider %}selected{% endif %}>Select a main model</option>
-                        <option value="openai" {% if settings.provider == 'openai' %}selected{% endif %}>OpenAI</option>
-                        <option value="anthropic" {% if settings.provider == 'anthropic' %}selected{% endif %}>Anthropic</option>
-                        <option value="cohere" {%  if settings.provider == 'cohere' %}selected{% endif %}>Cohere</option>
-                        <option value="fireworks" {%  if settings.provider == 'fireworks' %}selected{% endif %}>Fireworks</option>
-                        <option value="google" {%  if settings.provider == 'google' %}selected{% endif %}>Google</option>
-                        
-                    </select>
-                    
-                    <select id="model_name" name="model_name">  
-                        
-                        
-                    </select>
-                    <div class="inline-input">
-                        <label for="temperature">Temperature</label>
-                        <input type="number" id="temperature" name="temperature" value="{{ settings.temperature }}" step="0.1" min="0" max="1">
-                    </div>
-                    <div class="inline-input">
-                        <label for="top_p">Top P</label>
-                        <input type="number" id="top_p" name="top_p" value="{{ settings.top_p }}" step="0.1" min="0" max="1">
-                    </div>
-                    <div class="inline-input">
-                        <label for="top_k">Top K</label>
-                        <input type="number" id="top_k" name="top_k" value="{{ settings.top_k }}" step="1" min="1" max="10">
-                    </div>
-                    <div class="toggle-input">
-                        <label for="cite_sources">Cite Sources</label>
-                        <input type="checkbox" id="cite_sources" name="cite_sources" {% if settings.cite_sources %}checked{% endif %}>
-                    </div>
-                    <div class="toggle-input">
-                        <label for="chat_history">Chat History</label>
-                        <input type="checkbox" id="chat_history" name="chat_history" {% if settings.chat_history %}checked{% endif %}>
-                    </div>
-                </div>
 
-                <div class="messages">
-                    <h3>Messages</h3>
-                    <label for="system_prompt">System Prompt</label>
-                    <textarea id="system_prompt" name="system_prompt" placeholder="You are a...">{{ settings.system_prompt }}</textarea>
-                </div>
+<body class="bg-gray-900 text-white flex justify-center items-center h-screen m-0 p-0">
 
-                <div class="documents">
-                    <h3>Documents</h3>
-                    <label for="documents">Select Documents</label>
-                    <div id="documents">
-                        {% for document in documents %}
-                            <div class="document-item">
-                                <input type="checkbox" id="{{ document }}" name="documents" value="{{ document }}" {% if document in settings.documents %}checked{% endif %}>
+    <div class="flex flex-row bg-gray-800 rounded-lg overflow-hidden w-[95vw] h-[90vh]">
+        <!-- Navbar -->
+        <div class="w-1/4 min-w-[25vw] bg-gray-700 p-4 flex flex-col space-y-4">
+            <div class="flex space-x-4 mb-4">
+                <button id="nav-documents" class="w-full p-2 bg-gray-600 rounded hover:bg-gray-500">Grounding</button>
+                <button id="nav-settings" class="w-full p-2 bg-gray-600 rounded hover:bg-gray-500">Configurations</button>
+            </div>
+            <!-- Documents Sidebar -->
+            <!-- <div id="documents-sidebar" class="p-4 border-r border-gray-700 overflow-y-auto hidden flex-1">
+                <form id="documents-form" method="POST" action="/documents">
+                    <div class="mb-6">
+                        <h3 class="text-xl mb-2">Documents</h3>
+                        <label for="documents" class="block mb-2">Select Documents</label>
+                        <div id="documents" class="space-y-2">
+                            {% for document in documents %}
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" id="{{ document }}" name="documents" value="{{ document }}" {% if document in settings.documents %}checked{% endif %} class="text-gray-900">
                                 <label for="{{ document }}">{{ document }}</label>
                             </div>
-                        {% endfor %}
+                            {% endfor %}
+                        </div>
                     </div>
-                </div>
+                </form>
+                <h3 class="text-xl mb-2">Upload More Documents</h3>
+                <form action="/upload" method="POST" enctype="multipart/form-data" class="space-y-2">
+                    <input type="file" name="documents" multiple class="text-gray-300">
+                    <button type="submit" class="w-full p-2 bg-green-600 rounded hover:bg-green-500">Upload</button>
+                </form>
+                <button form="document-form" type="submit" class="w-full p-2 bg-blue-600 rounded hover:bg-green-500 mt-4">Save Settings</button>
+            </div> -->
+            
+            <!-- Settings Sidebar -->
+            <div class="p-3 border-r border-gray-700 overflow-y-auto flex-1 ">
+                <form id="settings-form" method="POST" action="/settings">
+                    <div id="settings-sidebar" class="mb-6 border border-gray-600 p-4 rounded overflow-y-scroll scrollbar-thin">
+                        <!-- <h3 class="text-xl mb-2">Configurations</h3> -->
+                        <label for="provider" class="block mb-2">Main Model</label>
+                        <select id="provider" name="provider" class="w-full p-2 mb-4 bg-gray-700 border border-gray-600 rounded text-gray-300">
+                            <option value="" {% if not settings.provider %}selected{% endif %}>Select a main model</option>
+                            <option value="openai" {% if settings.provider == 'openai' %}selected{% endif %}>OpenAI</option>
+                            <option value="anthropic" {% if settings.provider == 'anthropic' %}selected{% endif %}>Anthropic</option>
+                            <option value="cohere" {% if settings.provider == 'cohere' %}selected{% endif %}>Cohere</option>
+                            <option value="fireworks" {% if settings.provider == 'fireworks' %}selected{% endif %}>Fireworks</option>
+                            <option value="google" {% if settings.provider == 'google' %}selected{% endif %}>Google</option>
+                        </select>
 
-                <button type="submit">Save Settings</button>
-            </form>
+                        <select id="model_name" name="model_name" class="w-full p-2 mb-4 bg-gray-700 border border-gray-600 rounded text-gray-300">
+                        </select>
+                        
+                        <div class="flex items-center justify-between mb-4 border-t border-gray-600 pt-4">
+                            <label for="temperature" class="mr-2">Temperature</label>
+                            <input type="number" id="temperature" name="temperature" value="{{ settings.temperature }}" step="0.1" min="0" max="1" class="w-2/3 p-2 bg-gray-700 border border-gray-600 rounded text-gray-300">
+                        </div>
+                        <div class="flex items-center justify-between mb-4 border-t border-gray-600 pt-4">
+                            <label for="top_p" class="mr-2">Top P</label>
+                            <input type="number" id="top_p" name="top_p" value="{{ settings.top_p }}" step="0.1" min="0" max="1" class="w-2/3 p-2 bg-gray-700 border border-gray-600 rounded text-gray-300">
+                        </div>
+                        <div class="flex items-center justify-between mb-4 border-t border-gray-600 pt-4">
+                            <label for="top_k" class="mr-2">Top K</label>
+                            <input type="number" id="top_k" name="top_k" value="{{ settings.top_k }}" step="1" min="1" max="10" class="w-2/3 p-2 bg-gray-700 border border-gray-600 rounded text-gray-300">
+                        </div>
+                        <div class="flex items-center justify-between mb-4 border-t border-gray-600 pt-4">
+                            <label for="cite_sources" class="mr-2">Cite Sources</label>
+                            <input type="checkbox" id="cite_sources" name="cite_sources" {% if settings.cite_sources %}checked{% endif %} class="text-gray-900">
+                        </div>
+                        <div class="flex items-center justify-between mb-4 border-t border-gray-600 pt-4">
+                            <label for="chat_history" class="mr-2">Chat History</label>
+                            <input type="checkbox" id="chat_history" name="chat_history" {% if settings.chat_history %}checked{% endif %} class="text-gray-900">
+                        </div>
+                        <div class="enter justify-between mb-4 border-t border-gray-600 pt-4">
+                            <label for="system_prompt" class="block mb-2">System Prompt</label>
+                            <textarea id="system_prompt" name="system_prompt" placeholder="You are a..." class="w-full p-2 h-24 bg-gray-700 border border-gray-600 rounded resize-none text-gray-300">{{ settings.system_prompt }}</textarea>
+                        </div>
+                    </div>
+
+                    
+                    
+                    <div id="documents-sidebar" class="mb-6 border border-gray-600 p-2 rounded hidden overflow-y-scroll h-80 scrollbar-thin">
+                        <h3 class="text-xl mb-2">Grounding</h3>
+                        <label for="documents" class="block mb-2">Select Documents</label>
+                        <div id="documents" class="space-y-2">
+                            {% for document in documents %}
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" id="{{ document }}" name="documents" value="{{ document }}" {% if document in settings.documents %}checked{% endif %} class="text-gray-900">
+                                <label for="{{ document }}">{{ document }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                </form>
+                <form id="upload-form" action="/upload" method="POST" enctype="multipart/form-data" class="space-y-2 hidden">
+                    <h5 class="text-xl mb-2 p-0">Upload More Documents</h5>
+                    <input class="block w-50 text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" aria-describedby="file_input_help" id="file_input" type="file" multiple>
+
+                    <button form="upload-form" type="submit" class="w-20 p-1 bg-green-600 rounded hover:bg-green-500">Upload</button>
+                </form>
+                <!-- <button form="settings-form" type="submit" class="w-full p-2 bg-green-600 rounded hover:bg-green-500 mt-4">Save Settings</button> -->
+    
+            </div>
+            <button form="settings-form" type="submit" class="w-full p-2 bg-green-600 rounded hover:bg-green-500 mt-4">Save Settings</button>
         </div>
-        <div class="content">
-            <div class="output">
-                <h3>Output</h3>
+
+        <!-- Main Content -->
+        <div class="flex-1 p-4 flex flex-col overflow-y-auto">
+            <div class="flex-1 bg-gray-700 rounded-lg p-4 overflow-y-auto mb-4">
+                <h3 class="text-xl mb-2">Output</h3>
                 <p>{{ message }}</p>
                 <p>{{ sources }}</p>
             </div>
-            <form id="message-form" method="POST" action="/send_message">
-                <div class="message">
-                    <textarea id="message" name="message" placeholder="Type your message here..."></textarea>
-                    <button type="submit">Send Message</button>
-                </div>
+            <form id="message-form" method="POST" action="/send_message" class="flex flex-col">
+                <textarea id="message" name="message" placeholder="Type your message here..." class="w-full p-2 h-24 bg-gray-700 border-none rounded resize-none text-gray-300 mb-4"></textarea>
+                <button type="submit" class="w-full p-2 bg-green-600 rounded hover:bg-green-500">Send Message</button>
             </form>
         </div>
     </div>
 
     <script>
-        document.getElementById('provider').addEventListener('change', function() {
+        document.getElementById('provider').addEventListener('change', function () {
             const mainModel = this.value;
             const subModelSelect = document.getElementById('model_name');
 
@@ -234,16 +163,18 @@
                 `;
             } else if (mainModel === 'anthropic') {
                 subModelSelect.innerHTML += `
-                    <option value="claude-3-opus-20240229" {% if settings.model_name == 'claude-3-opus-20240229' %}selected{% endif %} >claude-3-opus-20240229</option>
+                    <option value="claude-2" {% if settings.model_name == 'claude-2' %}selected{% endif %} >claude-2</option>
+                    <option value="claude-1.3" {% if settings.model_name == 'claude-1.3' %}selected{% endif %}>claude-1.3</option>
+                    <option value="claude-1" {% if settings.model_name == 'claude-1' %}selected{% endif %}>claude-1</option>
+                    <option value="claude-instant-v1" {% if settings.model_name == 'claude-instant-v1' %}selected{% endif %}>claude-instant-v1</option>
                     <option value="claude-3-sonnet-20240229" {% if settings.model_name == 'claude-3-sonnet-20240229' %}selected{% endif %} >claude-3-sonnet-20240229</option>
+                    <option value="claude-3-codex-20240229" {% if settings.model_name == 'claude-3-codex-20240229' %}selected{% endif %} >claude-3-codex-20240229</option>
                     <option value="claude-3-haiku-20240307" {% if settings.model_name == 'claude-3-haiku-20240307' %}selected{% endif %} >claude-3-haiku-20240307</option>
-                
                 `;
             } else if (mainModel === 'cohere') {
                 subModelSelect.innerHTML += `
                     <option value="command-r" {% if settings.model_name == 'command-r' %}selected{% endif %}>command-r</option>
-                    <option value="command-r" {% if settings.model_name == 'command-r-plus' %}selected{% endif %}>command-r</option>
-                            
+                    <option value="command-r-plus" {% if settings.model_name == 'command-r-plus' %}selected{% endif %}>command-r-plus</option>
                 `;
             } else if (mainModel === 'fireworks') {
                 subModelSelect.innerHTML += `
@@ -252,18 +183,15 @@
                     <option value="accounts/fireworks/models/mixtral-8x22b-instruct" {% if settings.model_name == 'accounts/fireworks/models/mixtral-8x22b-instruct' %}selected{% endif %}>mixtral-8x22b-instruct</option>
                     <option value="accounts/fireworks/models/llama-v3-70b-instruct" {% if settings.model_name == 'accounts/fireworks/models/llama-v3-70b-instruct' %}selected{% endif %}>llama-v3-70b-instruct</option>
                     <option value="accounts/fireworks/models/bleat-adapter" {% if settings.model_name == 'accounts/fireworks/models/bleat-adapter' %}selected{% endif %}>bleat-adapter</option>
-                           
                 `;
             } else if (mainModel === 'google') {
                 subModelSelect.innerHTML += `
-                    <option value="gemini-1.5-flash" {% if settings.model_name == 'gemini-1.5-flash' %}selected{% endif %}>gemini-1.5-flash</option>
-                    <option value="gemini-1.5-pro" {% if settings.model_name == 'gemini-1.5-pro' %}selected{% endif %}>gemini-1.5-pro</option>
-                    <option value="gemini-1.0-pro" {% if settings.model_name == 'gemini-1.0-pro' %}selected{% endif %}>gemini-1.0-pro</option>
-                    <option value="chat-bison" {% if settings.model_name == 'chat-bison' %}selected{% endif %}>chat-bison</option>
-                    <option value="text-bison" {% if settings.model_name == 'text-bison' %}selected{% endif %}>text-bison</option>
-                    <option value="text-unicorn" {% if settings.model_name == 'text-unicorn' %}selected{% endif %}>text-unicorn</option>
-                    // <option value="medlm-medium" {% if settings.model_name == 'medlm-medium' %}selected{% endif %}>medlm-medium</option>
-                    // <option value="medlm-large" {% if settings.model_name == 'medlm-large' %}selected{% endif %}>medlm-large</option>       
+                    <option value="models/gemini-1.5-flash" {% if settings.model_name == 'models/gemini-1.5-flash' %}selected{% endif %}>gemini-1.5-flash</option>
+                    <option value="models/gemini-1.5-pro" {% if settings.model_name == 'models/gemini-1.5-pro' %}selected{% endif %}>gemini-1.5-pro</option>
+                    <option value="models/gemini-1.0-pro" {% if settings.model_name == 'models/gemini-1.0-pro' %}selected{% endif %}>gemini-1.0-pro</option>
+                    <option value="models/chat-bison" {% if settings.model_name == 'models/chat-bison' %}selected{% endif %}>chat-bison</option>
+                    <option value="models/text-bison" {% if settings.model_name == 'models/text-bison' %}selected{% endif %}>text-bison</option>
+                    <option value="models/text-unicorn" {% if settings.model_name == 'models/text-unicorn' %}selected{% endif %}>text-unicorn</option>
                 `;
             }
         });
@@ -271,6 +199,22 @@
         // Trigger change event to populate sub-models if a main model is already selected
         document.getElementById('provider').dispatchEvent(new Event('change'));
 
+        // Navbar functionality
+        document.getElementById('nav-documents').addEventListener('click', function () {
+            document.getElementById('upload-form').classList.toggle('hidden');
+            document.getElementById('documents-sidebar').classList.toggle('hidden');
+            document.getElementById('settings-sidebar').classList.add('hidden');
+        });
+
+        document.getElementById('nav-settings').addEventListener('click', function () {
+            document.getElementById('settings-sidebar').classList.toggle('hidden');
+            document.getElementById('documents-sidebar').classList.add('hidden');
+            document.getElementById('upload-form').classList.add('hidden');
+        });
+
+        // Show settings sidebar by default
+        document.getElementById('settings-sidebar').classList.remove('hidden');
     </script>
 </body>
+
 </html>

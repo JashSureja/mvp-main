@@ -15,7 +15,8 @@ settings_params = {
     'top_p': 0.7,
     'top_k': 3,
     'system_prompt': '',
-    'documents': []
+    'documents': [],
+    'existing_docs':[]
 }
 
 @main.route('/')
@@ -25,19 +26,29 @@ def upload_page():
 
 @main.route('/index')
 def index():
-    documents = settings_params['documents']
-    return render_template('index.html',settings=settings_params, message="", documents=documents)
+    langchain = current_app.config["LANGCHAIN"]
+    existing_documents = langchain.files_existing
+    return render_template('index.html',settings=settings_params, message="", documents=existing_documents)
 
 
-    
+
+# @main.route('/documents', methods=['POST','GET'])
+# def get_docs():
+#     global settings_params
+#     data = request.form
+#     selected_docs = data.getlist('documents')
+#     settings_params = { 'documents' : selected_docs}
 
 
 @main.route('/settings', methods=['POST','GET'])
 def chat():
     
+    files_existing = os.listdir("uploads/")
     global settings_params
+    
     langchain = current_app.config["LANGCHAIN"]
     data = request.form
+
     settings_params = {
         'provider': data.get('provider', ''),
         'model_name': data.get('model_name', ''),
@@ -47,13 +58,14 @@ def chat():
         'system_prompt': data.get('system_prompt', ''),
         'cite_sources': data.get('cite_sources', ''),
         'chat_history': data.get('chat_history',''),
-        'documents': data.getlist('documents')
+        'documents' : data.getlist('documents'),
+        'existing_docs' : files_existing
     }
     print(settings_params)
-    documents=settings_params['documents']
-    langchain.connect_vectorstores(documents, settings_params)
+    documents = settings_params['documents']
+    langchain.connect_vectorstores("org_1","project_1",documents, settings_params)
 
-    return render_template('index.html', settings=settings_params, message="Settings saved successfully!", documents=documents)
+    return render_template('index.html', settings=settings_params, message="Settings saved successfully!", documents=files_existing)
 
 @main.route('/send_message', methods=['POST'])
 def send_message():
@@ -69,9 +81,9 @@ def send_message():
             sources.append(doc.metadata['source'])
         
         
-        return render_template('index.html', settings=settings_params, message=response['answer'], sources=sources, documents=settings_params['documents'])
+        return render_template('index.html', settings=settings_params, message=response['answer'], sources=sources, documents=settings_params['existing_docs'])
     else:    
-        return render_template('index.html', settings=settings_params, message=response["answer"], sources='', documents=settings_params['documents'])
+        return render_template('index.html', settings=settings_params, message=response["answer"], sources='', documents=settings_params['existing_docs'])
 
 
 @main.route('/upload', methods=['POST'])
@@ -88,7 +100,9 @@ def upload_file():
         if file.filename != '':
             settings_params['documents'].append(file.filename)
             file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], file.filename))
-            langchain.call_pgvector("org_1", "project_1", file, chunk_size, chunk_overlap)
+            message = langchain.call_pgvector("org_1", "project_1", file, chunk_size, chunk_overlap)
+    files_existing = os.listdir("uploads/")
+    return render_template('index.html', settings=settings_params, message=message, documents=files_existing)
 
 
 
