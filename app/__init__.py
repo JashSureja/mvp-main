@@ -7,7 +7,7 @@ from .routes import main
 def create_app(debug=False):
     app = Flask(__name__)
     from app.langchain_copy import LangChain
-
+    app.secret_key = os.getenv('SECRET_KEY')
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
     app.config['S3_BUCKET'] = os.getenv("S3_BUCKET_NAME")
     app.config['S3_KEY'] = os.getenv("AWS_ACCESS_KEY")

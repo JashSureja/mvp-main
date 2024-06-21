@@ -90,9 +90,9 @@ class LangChain:
 
         pg_user = os.getenv("POSTGRE_USER_ID")
         pg_password = os.getenv("POSTGRE_PASSWORD")
-        pg_host = "localhost"
-        pg_port = "5432"
-        pg_dbname = "steinn_db"
+        pg_host = os.getenv("POSTGRE_HOST")
+        pg_port = os.getenv("POSTGRE_PORT")
+        pg_dbname = os.getenv("POSTGRE_DBNAME")
 
         self.db_params = {
             'dbname': pg_dbname,
