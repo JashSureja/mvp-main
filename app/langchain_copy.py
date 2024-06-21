@@ -34,6 +34,15 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
 
+class Document:
+    def __init__(self, page_content, metadata):
+        self.page_content = page_content
+        self.metadata = metadata
+
+    def __repr__(self):
+        return f"Document(page_content={self.page_content!r}, metadata={self.metadata!r})"
+
+
 
 class LangChain:
     """
@@ -282,18 +291,20 @@ class LangChain:
         if file.filename not in files_existing:
             try:
                 
-                file_content = file.read()
+                file_content = file.read().decode('utf-8')
                 filename = file.filename
-                temp_path = os.path.join("uploads", filename)
-                with open(temp_path, 'wb') as temp_file:
-                    temp_file.write(file_content)
+                # # temp_path = os.path.join("uploads", filename)
+                # # with open(temp_path, 'wb') as temp_file:
+                # #     temp_file.write(file_content)
+                
                     
-                print("inside for loop")
-                if ".txt" in filename:
-                    loader = TextLoader(temp_path)
-                    doc = loader.load()
-                    print("loaded")
-
+                # print("inside for loop")
+                # if ".txt" in filename:
+                #     loader = TextLoader(temp_path)
+                #     doc = loader.load()
+                #     print("--------------------------------")
+                #     print(doc)
+                #     print("--------------------------------")
                 # elif ".pdf" in filename:
                 #     loader = PyMuPDFLoader(os.path.join("uploads/", filename))
                 #     doc = loader.load()
@@ -303,9 +314,18 @@ class LangChain:
 
                 # else:
                 #     print("Not a valid file format")
+                metadata = {
+                    "source": filename
+                }
+
+                # Combine content and metadata into a document structure
+                document = [Document(
+                    page_content = file_content,
+                    metadata= metadata
+                )]
                 
-                documents = text_splitter.split_documents(doc)
-                print(documents)
+                documents = text_splitter.split_documents(document)
+                
                 collection_name = str(organisation_id) + str(project_id) + filename
                 vectorstore = PGVector.from_documents(
                     documents=documents,
@@ -325,9 +345,9 @@ class LangChain:
             except Exception as e:
                 return {'error': str(e)}, 500
             
-            finally:
-                if os.path.exists(temp_path):
-                    os.remove(temp_path)
+            # finally:
+            #     if os.path.exists(temp_path):
+            #         os.remove(temp_path)
         else: 
             return("Vectorstore Exists!")
            
