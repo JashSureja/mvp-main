@@ -112,11 +112,7 @@ class LangChain:
         }
         # self.pg_conn = psycopg.connect(**db_params)
         self.connection_string = (
-            "postgresql+psycopg://"
-            + pg_user
-            + ":"
-            + pg_password
-            + "@localhost:5432/steinn_db"
+            os.getenv('DATABASE_URL')
         )
         print("pgsql connected")
 
