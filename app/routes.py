@@ -25,18 +25,14 @@ def home():
         return render_template('upload.html')
     return render_template('login.html')
 
-@main.route("/upload")
-def upload_page():
-    if 'logged_in' in session and session['logged_in']:
-        return render_template('upload.html')
-    return redirect(url_for('home'))
+
 
 @main.route('/login', methods=['POST'])
 def login():
     password = request.form['password']
     if password == os.getenv('SESSION_PASSWORD'):
         session['logged_in'] = True
-        return redirect(url_for('home'))
+        return render_template('upload.html')
     return render_template('login.html', error="Invalid password")
 
 @main.route('/index')
