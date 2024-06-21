@@ -27,7 +27,7 @@ def upload_page():
 @main.route('/index')
 def index():
     langchain = current_app.config["LANGCHAIN"]
-    existing_documents = langchain.files_existing
+    existing_documents = langchain.get_file_names()
     return render_template('index.html',settings=settings_params, message="", documents=existing_documents)
 
 
@@ -43,10 +43,11 @@ def index():
 @main.route('/settings', methods=['POST','GET'])
 def chat():
     
-    files_existing = os.listdir("uploads/")
+    
     global settings_params
     
     langchain = current_app.config["LANGCHAIN"]
+    files_existing = langchain.get_file_names()
     data = request.form
 
     settings_params = {
@@ -63,9 +64,11 @@ def chat():
     }
     print(settings_params)
     documents = settings_params['documents']
-    langchain.connect_vectorstores("org_1","project_1",documents, settings_params)
-
-    return render_template('index.html', settings=settings_params, message="Settings saved successfully!", documents=files_existing)
+    if len(documents) != 0:
+        langchain.connect_vectorstores(1,1,documents, settings_params)
+        return render_template('index.html', settings=settings_params, message="Settings saved successfully!", documents=files_existing)
+    else: 
+        return render_template('index.html', settings=settings_params, message="Select at least one document.", documents=files_existing)
 
 @main.route('/send_message', methods=['POST'])
 def send_message():
@@ -92,6 +95,7 @@ def upload_file():
     langchain = current_app.config["LANGCHAIN"]
     global settings_params
     files = request.files.getlist('documents')
+    message = ""
     # chunk_size = request.form.get('chunk_size')
     # chunk_overlap = request.form.get('chunk_overlap')
     chunk_size = 2000
@@ -99,15 +103,20 @@ def upload_file():
     for file in files:
         if file.filename != '':
             settings_params['documents'].append(file.filename)
-            file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], file.filename))
-            message = langchain.call_pgvector("org_1", "project_1", file, chunk_size, chunk_overlap)
-    files_existing = os.listdir("uploads/")
+            
+            message = langchain.call_pgvector(1, 1, file, chunk_size, chunk_overlap)
+            # langchain.upload_files("org_1", "project_1", file)
+            
+            langchain.upload_document(1, 1,file)
+            
+            
+    files_existing = langchain.get_file_names()
+    if message != "":
+        pass
+    else:
+        message = "Select a file for upload!"
     return render_template('index.html', settings=settings_params, message=message, documents=files_existing)
 
-
-
-    
-    return redirect(url_for('main.index'))
 
 @main.route('/add/<username>')
 def add_user(username):

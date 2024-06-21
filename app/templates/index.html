@@ -12,13 +12,13 @@
             width: 6px; /* Width of the scrollbar */
         }
         .scrollbar-thin::-webkit-scrollbar-track {
-            background: #5f5f5f; /* Track color */
+            background: #636363; /* Track color */
         }
         .scrollbar-thin::-webkit-scrollbar-thumb {
-            background: #3f3f3f; /* Thumb color */
+            background: #adadad; /* Thumb color */
         }
         .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-            background: #333232; /* Thumb color on hover */
+            background: #dadada; /* Thumb color on hover */
         }
         #settings-sidebar{
             height: 61.5vh;
@@ -35,8 +35,8 @@
         <!-- Navbar -->
         <div class="w-1/4 min-w-[25vw] bg-gray-700 p-4 flex flex-col space-y-4">
             <div class="flex space-x-4 mb-4">
-                <button id="nav-documents" class="w-full p-2 bg-gray-600 rounded hover:bg-gray-500">Grounding</button>
                 <button id="nav-settings" class="w-full p-2 bg-gray-600 rounded hover:bg-gray-500">Configurations</button>
+                <button id="nav-documents" class="w-full p-2 bg-gray-600 rounded hover:bg-gray-500">Grounding</button>
             </div>
             
             <!-- Settings Sidebar -->
@@ -89,9 +89,15 @@
                         <h3 class="text-xl mb-2">Grounding</h3>
                         <label for="documents" class="block mb-2">Select Documents</label>
                         <div id="documents" class="space-y-2">
-                            {% for document in documents %}
+                            {% for document in documents if document in settings.documents %}
                             <div class="flex items-center space-x-2">
-                                <input type="checkbox" id="{{ document }}" name="documents" value="{{ document }}" {% if document in settings.documents %}checked{% endif %} class="text-gray-900">
+                                <input type="checkbox" id="{{ document }}" name="documents" value="{{ document }}" checked class="text-gray-900">
+                                <label for="{{ document }}">{{ document }}</label>
+                            </div>
+                            {% endfor %}
+                            {% for document in documents if document not in settings.documents %}
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" id="{{ document }}" name="documents" value="{{ document }}" class="text-gray-900">
                                 <label for="{{ document }}">{{ document }}</label>
                             </div>
                             {% endfor %}
@@ -103,12 +109,12 @@
                     <h5 class="text-xl mb-2 p-0">Upload More Documents</h5>
                     <input class="block w-4/5 text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" aria-describedby="file_input_help" id="file_input" type="file" name="documents" multiple>
 
-                    <button form="upload-form" type="submit" class="w-20 p-1 bg-green-600 rounded hover:bg-green-500">Upload</button>
+                    <button form="upload-form" type="submit" class="w-20 p-1 bg-blue-500 rounded hover:bg-blue-700">Upload</button>
                 </form>
                 <!-- <button form="settings-form" type="submit" class="w-full p-2 bg-green-600 rounded hover:bg-green-500 mt-4">Save Settings</button> -->
     
             </div>
-            <button form="settings-form" type="submit" class="w-full p-2 bg-green-600 rounded hover:bg-green-500 mt-4">Save Settings</button>
+            <button form="settings-form" type="submit" class="w-full p-2 text-gray-900 bg-blue-300 rounded hover:bg-blue-500 mt-4">Save Settings</button>
         </div>
 
         <!-- Main Content -->
@@ -118,14 +124,19 @@
                 <p>{{ message }}</p>
                 <p>{{ sources }}</p>
             </div>
-            <form id="message-form" method="POST" action="/send_message" class="flex flex-col">
-                <textarea id="message" name="message" placeholder="Type your message here..." class="w-full p-2 h-24 bg-gray-700 border-none rounded resize-none text-gray-300 mb-4"></textarea>
-                <button type="submit" class="w-full p-2 bg-green-600 rounded hover:bg-green-500">Send Message</button>
+            <form id="message-form" method="POST" action="/send_message" class="flex items-center space-x-2">
+                <textarea id="message" name="message" placeholder="Type your message here..." class="w-full p-2 bg-gray-700 border-none rounded resize-none text-gray-300 overflow-hidden" oninput="autoResize(this)"></textarea>
+                <button type="submit" class="w-auto p-2 bg-green-600 rounded hover:bg-green-500 text-white">Send</button>
             </form>
+            
         </div>
     </div>
 
     <script>
+        function autoResize(textarea) {
+        textarea.style.height = 'auto'; // Reset height to auto to calculate correct scrollHeight
+        textarea.style.height = (textarea.scrollHeight) + 'px'; // Set height based on content
+        }
         document.getElementById('provider').addEventListener('change', function () {
             const mainModel = this.value;
             const subModelSelect = document.getElementById('model_name');

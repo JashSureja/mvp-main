@@ -9,15 +9,19 @@ def create_app(debug=False):
     from app.langchain_copy import LangChain
 
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
-    app.config['UPLOAD_FOLDER'] = 'uploads'
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    app.config['S3_BUCKET'] = os.getenv("S3_BUCKET_NAME")
+    app.config['S3_KEY'] = os.getenv("AWS_ACCESS_KEY")
+    app.config['S3_SECRET'] = os.getenv("AWS_ACCESS_SECRET")
+    app.config['S3_LOCATION'] = os.getenv('S3_LOCATION')
 
+    
 
 
     db.init_app(app)
 
     app.register_blueprint(main)
     langchain = LangChain()
+    langchain.create_table()
     if debug:
         app.config['DEBUG'] = True
 

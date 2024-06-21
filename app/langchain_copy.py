@@ -1,7 +1,8 @@
 import os
-
+import boto3
 import docx2txt
 import psycopg
+from flask import jsonify
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
@@ -32,6 +33,8 @@ from langchain_postgres.vectorstores import PGVector
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
+
+
 class LangChain:
     """
     The LangChain class is responsible for loading the relevant blog,
@@ -45,6 +48,11 @@ class LangChain:
         self.cohere_api_key = os.getenv("COHERE_API_KEY")
         self.fireworks_api_key = os.getenv("FIREWORKS_API_KEY")
         self.google_api_key = os.getenv("GOOGLE_API_KEY")
+        self.prefix_folder = "mvp-documents/" # for aws folder inside the bucket
+        self.bucket = os.getenv('S3_BUCKET_NAME')
+
+
+
         contextualize_q_system_prompt = (
             "Given a chat history and the latest user question "
             "which might reference context in the chat history, "
@@ -82,7 +90,18 @@ class LangChain:
 
         pg_user = os.getenv("POSTGRE_USER_ID")
         pg_password = os.getenv("POSTGRE_PASSWORD")
-        self.embeddings = OpenAIEmbeddings()
+        pg_host = "localhost"
+        pg_port = "5432"
+        pg_dbname = "steinn_db"
+
+        self.db_params = {
+            'dbname': pg_dbname,
+            'user': pg_user,
+            'password': pg_password,
+            'host': pg_host,
+            'port': pg_port
+        }
+        # self.pg_conn = psycopg.connect(**db_params)
         self.connection_string = (
             "postgresql+psycopg://"
             + pg_user
@@ -93,8 +112,10 @@ class LangChain:
         print("pgsql connected")
 
         #  Get existing files from storage
-        self.files_existing = os.listdir("uploads/")
+        
 
+
+        self.embeddings = OpenAIEmbeddings()
         #  Create model instance
         self.llm = (
             ChatAnthropic(
@@ -107,14 +128,17 @@ class LangChain:
             .configurable_alternatives(
                 ConfigurableField(id="provider"),
                 default_key="anthropic",
+
                 openai=ChatOpenAI(model="gpt-4o", temperature=0, max_tokens=128),
+
                 cohere=ChatCohere(model="command-r", temperature=0, max_tokens=128),
+                
                 fireworks=Fireworks(
                     model="accounts/fireworks/models/firefunction-v2",
                     temperature=0,
                     top_k=3,
                     top_p=0.7,
-                    max_tokens=128,
+                    max_tokens=1024,
                 ),
                 google=GoogleGenerativeAI(
                     model="text-bison@002",
@@ -167,59 +191,165 @@ class LangChain:
             )
         )
 
-    def call_csv_agent(query):
-        csv_file = "uploaded csv file"
+    def create_table(self):
+        conn = None
+        try:
+            db_params = self.db_params
+            conn =  psycopg.connect(**db_params)
+            cur = conn.cursor()
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS documents (
+                    id SERIAL PRIMARY KEY,
+                    organization_id INT,
+                    project_id INT,
+                    filename TEXT,
+                    content BYTEA,
+                    upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.commit()
+            cur.close()
+        except (Exception, psycopg.DatabaseError) as error:
+            print(f"Error: {error}")
+        finally:
+            if conn is not None:
+                conn.close()
 
-        if csv_file is not None:
-            agent = create_csv_agent(OpenAI(temperature=0), csv_file, verbose=True)
+    def upload_document(self, organization_id, project_id, file):
 
-            user_question = query
+        #  upload to postgresql database
+        conn = None
+        try:
+            db_params = self.db_params
+            conn =  psycopg.connect(**db_params)
+            cur = conn.cursor()
+            if file:
+                filename = file.filename
+            
+            cur.execute("""
+                INSERT INTO documents (organization_id, project_id, filename)
+                VALUES (%s, %s, %s)
+            """, (organization_id, project_id, filename))
+            conn.commit()
+            print(f"File {filename} uploaded successfully.")
+            cur.close()
+        except (Exception, psycopg.DatabaseError) as error:
+            print(f"Error: {error}")
+        finally:
+            if conn is not None:
+                conn.close()
 
-            if user_question is not None and user_question != "":
-                agent.invoke(user_question)
+        # upload to s3 bucket 
+        
+        
+        # s3_client = boto3.client(
+        #     service_name = 's3' 
+        # )
+        self.s3 = boto3.resource("s3")
+        
+        s3_filename = self.prefix_folder + str(organization_id) + str(project_id) + file.filename
+
+        self.s3.Bucket(self.bucket).upload_fileobj(file, s3_filename)
+        # response = s3_client.upload_fileobj(file_name, bucket, s3_filename)
+        print("uploaded", file.filename)
+
+
+    def get_uploaded_file(self, organization_id,project_id, file_name):
+        s3client = boto3.client(
+            's3',
+            region_name='us-east-1'
+        )
+
+        path_to_file = self.prefix_folder + str(organization_id) + str(project_id) + file_name
+        fileobj = s3client.get_object(
+            Bucket=self.bucket,
+            Key= path_to_file
+        ) 
+        return fileobj
+
+
+
 
     def call_pgvector(
         self, organisation_id, project_id, file, chunk_size, chunk_overlap
     ):
-        # files array contains file names
-        vectors = []
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size, chunk_overlap=chunk_overlap
         )
-
         # for each file, check the extension and select loader accordingly
+        files_existing = self.get_file_names()
+        
+        if file.filename not in files_existing:
+            try:
+                
+                file_content = file.read()
+                filename = file.filename
+                temp_path = os.path.join("uploads", filename)
+                with open(temp_path, 'wb') as temp_file:
+                    temp_file.write(file_content)
+                    
+                print("inside for loop")
+                if ".txt" in filename:
+                    loader = TextLoader(temp_path)
+                    doc = loader.load()
+                    print("loaded")
 
-        if file.filename not in self.files_existing:
-            collection_name = organisation_id + project_id + file.filename
-            print("inside for loop")
-            if ".txt" in file.filename:
-                loader = TextLoader(os.path.join("uploads/", file.filename))
-                doc = loader.load()
+                # elif ".pdf" in filename:
+                #     loader = PyMuPDFLoader(os.path.join("uploads/", filename))
+                #     doc = loader.load()
 
-            elif ".pdf" in file.filename:
-                loader = PyMuPDFLoader(os.path.join("uploads/", file.filename))
-                doc = loader.load()
+                # elif ".docx" in filename:
+                #     doc = docx2txt.process(file)
 
-            elif ".docx" in file.filename:
-                doc = docx2txt.process(file)
+                # else:
+                #     print("Not a valid file format")
+                
+                documents = text_splitter.split_documents(doc)
+                print(documents)
+                collection_name = str(organisation_id) + str(project_id) + filename
+                vectorstore = PGVector.from_documents(
+                    documents=documents,
+                    embedding=self.embeddings,
+                    connection=self.connection_string,
+                    collection_name=collection_name,
+                )
+                
 
-            else:
-                print("Not a valid file format")
+                #         if vectorstore is not None:
+                #             vectors = vectors.append("created")
+                # if len(vectors)==len(files):
+                
+                
+                return("Vectorstore Creation Successful!")
+            
+            except Exception as e:
+                return {'error': str(e)}, 500
+            
+            finally:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+        else: 
+            return("Vectorstore Exists!")
+           
+        
+        
 
-            documents = text_splitter.split_documents(doc)
-            vectorstore = PGVector.from_documents(
-                documents=documents,
-                embedding=self.embeddings,
-                connection=self.connection_string,
-                collection_name=collection_name,
-            )
-            #         if vectorstore is not None:
-            #             vectors = vectors.append("created")
-            # if len(vectors)==len(files):
-            self.files_existing = os.listdir("uploads/")
-            return("Vectorstore Creation Successful!")
-        else:
-            return("Vectorstore Already Exists!")
+
+    def get_file_names(self):
+        conn = None
+        try:
+            db_params = self.db_params
+            conn =  psycopg.connect(**db_params)
+            cur = conn.cursor()
+            cur.execute("SELECT filename FROM documents")
+            file_names = [row[0] for row in cur.fetchall()]
+            cur.close()
+            return file_names
+        except (Exception, psycopg.DatabaseError) as error:
+            print(f"Error: {error}")
+        finally:
+            if conn is not None:
+                conn.close()
 
     def call_html_parser(self, url):
         collection_name = "organisation_id" + "project_id" + url
@@ -248,6 +378,20 @@ class LangChain:
         )
         print("vector done")
 
+
+    def call_csv_agent(query):
+        csv_file = "uploaded csv file"
+
+        if csv_file is not None:
+            agent = create_csv_agent(OpenAI(temperature=0), csv_file, verbose=True)
+
+            user_question = query
+
+            if user_question is not None and user_question != "":
+                agent.invoke(user_question)
+
+
+
     def connect_vectorstores(
         self, organisation_id, project_id, collection_array, settings_params
     ):
@@ -265,9 +409,9 @@ class LangChain:
 
         for filename in collection_array:
             vectorstore = PGVector.from_existing_index(
-                embedding=self.embeddings,
-                collection_name=organisation_id + project_id + filename,
-                connection=self.connection_string,
+                embedding = self.embeddings,
+                collection_name = str(organisation_id) + str(project_id) + filename,
+                connection = self.connection_string,
             )
             print("VectorStore connected")
             retriever = vectorstore.as_retriever(
@@ -341,7 +485,7 @@ class LangChain:
             prompt = ChatPromptTemplate.from_messages(
                 [
                     ("system", system_prompt),
-                    ("human", "{input}"),
+                    ("human", "{input}")
                 ]
             )
 
