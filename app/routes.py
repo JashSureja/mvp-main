@@ -21,8 +21,11 @@ settings_params = {
 
 @main.route("/")
 def home():
+    
+    langchain = current_app.config["LANGCHAIN"]
+    existing_documents = langchain.get_file_names()
     if 'logged_in' in session and session['logged_in']:
-        return render_template('index.html')
+        return render_template('index.html',settings=settings_params, message="", documents=existing_documents)
     return render_template('login.html')
 
 
@@ -35,7 +38,7 @@ def login():
     password = request.form['password']
     if password == os.getenv('SESSION_PASSWORD'):
         session['logged_in'] = True
-        return render_template('index.html',message="", documents=existing_documents)
+        return render_template('index.html',settings=settings_params,message="", documents=existing_documents)
     return render_template('login.html', error="Invalid password")
 
 @main.route('/index')
