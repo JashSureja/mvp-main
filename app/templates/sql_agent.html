@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple UI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .scrollbar-thin::-webkit-scrollbar {
+            width: 6px; /* Width of the scrollbar */
+        }
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: #636363; /* Track color */
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: #adadad; /* Thumb color */
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+            background: #dadada; /* Thumb color on hover */
+        }
+        #settings-sidebar{
+            height: 61.5vh;
+        }
+        #documents-sidebar{
+            height: 45vh;
+        }
+    </style>    
+</head>
+
+<body class="bg-gray-900 text-white flex justify-center items-center h-screen m-0 p-0">
+
+    <div class="flex flex-row bg-gray-800 rounded-lg overflow-hidden w-[95vw] h-[90vh]">
+        <!-- Navbar -->
+        <div class="w-1/4 min-w-[25vw] bg-gray-700 p-4 flex flex-col space-y-4">
+            <!-- <div class="flex space-x-4 mb-4">
+                <button id="nav-settings" class="w-full p-2 bg-gray-600 rounded hover:bg-gray-500">Configurations</button>
+                <button id="nav-documents" class="w-full p-2 bg-gray-600 rounded hover:bg-gray-500">Grounding</button>
+            </div> -->
+            <!-- Settings Sidebar -->
+            <form id="message-form" method="POST" action="/sql_input" class="flex items-center space-x-2">
+            <div class="p-3 border-r  flex-1" id="parent-sidebar">
+                <!-- <form id="settings-form" method="POST" action="/sql_input"> -->
+                    <div id="settings-sidebar" class="mb-6 border border-gray-600 p-4 rounded">
+                    
+                        <div class="enter justify-between mb-4 border-gray-600 pt-4">
+                            <label for="connection_string" class="block mb-2">SQL Connection URI</label>
+                            <textarea id="connection_string" name="connection_string" placeholder="postgresql://user:password@host/dbname..." class="w-full p-2 h-24 bg-gray-700 border border-gray-600 rounded resize-none text-gray-300">{{ connection_string }}</textarea>
+                        </div>
+                    </div>
+                    
+                <!-- </form> -->
+                
+            </div>
+            <!-- <button form="settings-form" type="submit" class="w-full p-2 text-gray-900 bg-blue-300 rounded hover:bg-blue-500 mt-4" hidden>Save Settings</button> -->
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 p-4 flex flex-col overflow-y-auto">
+            <div class="flex-1 bg-gray-700 rounded-lg p-4 overflow-y-auto mb-4">
+                <h3 class="text-xl mb-2">Output</h3>
+                <p>{{ message }}</p>
+                <p>{{ sources }}</p>
+            </div>
+            
+                <textarea id="message" name="message" placeholder="Type your message here..." class="w-full p-2 bg-gray-700 border-none rounded resize-none text-gray-300 overflow-hidden" oninput="autoResize(this)"></textarea>
+                <button type="submit" class="w-auto p-2 bg-green-600 rounded hover:bg-green-500 text-white">Send</button>
+            </form>
+            
+        </div>
+    </div>
+
+    <script>
+        function autoResize(textarea) {
+        textarea.style.height = 'auto'; // Reset height to auto to calculate correct scrollHeight
+        textarea.style.height = (textarea.scrollHeight) + 'px'; // Set height based on content
+        }
+        
+    </script>
+</body>
+
+</html>

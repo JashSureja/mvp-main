@@ -21,25 +21,46 @@ settings_params = {
 
 @main.route("/")
 def home():
-    
-    langchain = current_app.config["LANGCHAIN"]
-    existing_documents = langchain.get_file_names()
     if 'logged_in' in session and session['logged_in']:
-        return render_template('index.html',settings=settings_params, message="", documents=existing_documents)
+        return render_template('menu.html')
     return render_template('login.html')
 
 
 
 @main.route('/login', methods=['POST'])
 def login():
-    
-    langchain = current_app.config["LANGCHAIN"]
-    existing_documents = langchain.get_file_names()
     password = request.form['password']
     if password == os.getenv('SESSION_PASSWORD'):
         session['logged_in'] = True
-        return render_template('index.html',settings=settings_params,message="", documents=existing_documents)
+        return render_template('menu.html')
     return render_template('login.html', error="Invalid password")
+
+@main.route('/menu', methods=['POST'])
+def menu():
+    langchain = current_app.config["LANGCHAIN"]
+    existing_documents = langchain.get_file_names()
+    selected_menu = request.form['selected_menu']
+    if selected_menu == "upload_documents":
+        return render_template('index.html',settings=settings_params, message="", documents=existing_documents)
+
+    # elif selected_menu == "website_agent":
+    #     return render_template('web_agent.html',settings=settings_params, message="")
+
+    elif selected_menu == "sql_agent":
+        return render_template('sql_agent.html',settings=settings_params, message="")
+
+
+@main.route('/sql_input', methods=['GET', 'POST'])
+def sql_process():
+    langchain = current_app.config["LANGCHAIN"]
+    data = request.form
+    connection_string = str(data.get('connection_string'))
+    query = data.get('message')
+    print(connection_string)
+    agent = langchain.sql_agent(connection_string = connection_string)
+    response = agent.invoke({"input": query})
+    return render_template('sql_agent.html', message=response['output'], connection_string = connection_string)
+
 
 @main.route('/index')
 def index():
@@ -113,17 +134,17 @@ def upload_file():
     global settings_params
     files = request.files.getlist('documents')
     message = ""
-    # chunk_size = request.form.get('chunk_size')
-    # chunk_overlap = request.form.get('chunk_overlap')
-    chunk_size = 2000
-    chunk_overlap = 200
+    chunk_size = request.form.get('chunk_size')
+    chunk_overlap = request.form.get('chunk_overlap')
+    # chunk_size = 2000
+    # chunk_overlap = 200
     for file in files:
         if file.filename != '':
             settings_params['documents'].append(file.filename)
             
-            message = langchain.call_pgvector(1, 1, file, chunk_size, chunk_overlap)
+            message = langchain.call_pgvector(1, 1, file, int(chunk_size), int(chunk_overlap))
             # langchain.upload_files("org_1", "project_1", file)
-            
+            # print(chunk_overlap,chunk_size)
             langchain.upload_document(1, 1,file)
             
             

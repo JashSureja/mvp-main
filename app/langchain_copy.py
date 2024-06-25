@@ -21,7 +21,7 @@ from langchain_community.document_loaders import (
 from langchain_community.document_loaders.csv_loader import CSVLoader
 from langchain_community.document_transformers import Html2TextTransformer
 from langchain_core.chat_history import BaseChatMessageHistory
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, HumanMessagePromptTemplate
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.runnables.utils import ConfigurableField
 from langchain_experimental.agents.agent_toolkits import create_csv_agent
@@ -31,6 +31,13 @@ from langchain_openai import ChatOpenAI, OpenAI
 from langchain_openai.embeddings import OpenAIEmbeddings
 from langchain_postgres.vectorstores import PGVector
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+from langchain_community.utilities import SQLDatabase
+from langchain_community.agent_toolkits.sql.prompt import SQL_FUNCTIONS_SUFFIX
+from langchain_core.messages import AIMessage
+from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
+from langchain.agents import create_openai_tools_agent
+from langchain.agents.agent import AgentExecutor
 
 
 
@@ -367,46 +374,6 @@ class LangChain:
             if conn is not None:
                 conn.close()
 
-    def call_html_parser(self, url):
-        collection_name = "organisation_id" + "project_id" + url
-
-        loader = RecursiveUrlLoader(url, prevent_outside=True)
-        html2text = Html2TextTransformer()
-        doc = loader.load()
-        # filter docs for only text content
-        filtered_docs = [
-            d
-            for d in doc
-            if "content_type" in d.metadata and "text" in d.metadata["content_type"]
-        ]
-
-        docs_transformed = html2text.transform_documents(filtered_docs)
-
-        text_splitter = RecursiveCharacterTextSplitter()
-        documents = text_splitter.split_documents(docs_transformed)
-        print("splitted")
-
-        web_vectorstore = PGVector.from_documents(
-            documents=documents,
-            embedding=self.embeddings,
-            connection=self.connection_string,
-            collection_name=collection_name,
-        )
-        print("vector done")
-
-
-    def call_csv_agent(query):
-        csv_file = "uploaded csv file"
-
-        if csv_file is not None:
-            agent = create_csv_agent(OpenAI(temperature=0), csv_file, verbose=True)
-
-            user_question = query
-
-            if user_question is not None and user_question != "":
-                agent.invoke(user_question)
-
-
 
     def connect_vectorstores(
         self, organisation_id, project_id, collection_array, settings_params
@@ -510,6 +477,122 @@ class LangChain:
                 ensemble_retriever, question_answer_chain
             )
             print("rag chain built successfully")
+
+
+
+
+    def call_html_parser(self,organisation_id, project_id, url, settings_params):
+        collection_name = organisation_id + project_id + url
+        
+        top_k = settings_params["top_k"]
+        top_p = settings_params["top_p"]
+        temperature = settings_params["temperature"]
+        model_name = settings_params["model_name"]
+        provider = settings_params["provider"]
+
+        llm = self.llm.with_config(
+            configurable={
+                "provider": provider,
+                "model_name": model_name,
+                "temperature": temperature,
+                "top_k": top_k,
+                "top_p": top_p,
+                # "max_tokens":max_tokens
+            }
+        )
+
+        loader = RecursiveUrlLoader(url, prevent_outside=True)
+        html2text = Html2TextTransformer()
+        doc = loader.load()
+        # filter docs for only text content
+        filtered_docs = [
+            d
+            for d in doc
+            if "content_type" in d.metadata and "text" in d.metadata["content_type"]
+        ]
+
+        docs_transformed = html2text.transform_documents(filtered_docs)
+
+        text_splitter = RecursiveCharacterTextSplitter()
+        documents = text_splitter.split_documents(docs_transformed)
+        print("splitted")
+
+        web_vectorstore = PGVector.from_documents(
+            documents=documents,
+            embedding=self.embeddings,
+            connection=self.connection_string,
+            collection_name=collection_name,
+        )
+        print("vector done")
+        retriever = web_vectorstore.as_retriever(
+                search_type="similarity", search_kwargs={"k": top_k}
+            )
+        system_prompt = """Use the following pieces of retrieved context to answer the question. 
+                If you don't know the answer, say that you 
+                don't know. Use three sentences maximum and keep the 
+                answer concise.\n\n
+                {context}"""
+        
+        qa_prompt = ChatPromptTemplate.from_messages(
+                [
+                    ("system", system_prompt),
+                    MessagesPlaceholder("chat_history"),
+                    ("human", "{input}"),
+                ]
+            )
+        question_answer_chain = create_stuff_documents_chain(llm, qa_prompt)
+
+        rag_chain = create_retrieval_chain(
+                retriever, question_answer_chain
+            )
+        return rag_chain
+
+    def call_csv_agent(query):
+        csv_file = "uploaded csv file"
+
+        if csv_file is not None:
+            agent = create_csv_agent(OpenAI(temperature=0), csv_file, verbose=True)
+
+            user_question = query
+
+            if user_question is not None and user_question != "":
+                agent.invoke(user_question)
+
+
+    def sql_agent(connection_string):    
+        db = SQLDatabase.from_uri(connection_string)
+        
+        llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
+    
+        toolkit = SQLDatabaseToolkit(db=db, llm=llm)
+        context = toolkit.get_context()
+        tools = toolkit.get_tools()
+
+        messages = [
+            HumanMessagePromptTemplate.from_template("{input}"),
+            AIMessage(content=SQL_FUNCTIONS_SUFFIX),
+            MessagesPlaceholder(variable_name="agent_scratchpad"),
+        ]
+
+        prompt = ChatPromptTemplate.from_messages(messages)
+        prompt = prompt.partial(**context)
+
+
+        agent = create_openai_tools_agent(llm, tools, prompt)
+
+        agent_executor = AgentExecutor(
+            agent=agent,
+            tools=toolkit.get_tools(),
+            verbose=True,
+        )
+
+        
+        return agent_executor
+
+
+
+
+
 
     def get_response(self, query):
         if self.chat_history == "on":
