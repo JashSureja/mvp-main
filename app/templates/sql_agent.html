@@ -39,31 +39,32 @@
                 <button id="nav-documents" class="w-full p-2 bg-gray-600 rounded hover:bg-gray-500">Grounding</button>
             </div> -->
             <!-- Settings Sidebar -->
-            <form id="message-form" method="POST" action="/sql_input" class="flex items-center space-x-2">
+            
             <div class="p-3 border-r  flex-1" id="parent-sidebar">
-                <!-- <form id="settings-form" method="POST" action="/sql_input"> -->
-                    <div id="settings-sidebar" class="mb-6 border border-gray-600 p-4 rounded">
+                <form id="settings-form" method="POST" action="/sql_set_uri">
+                    <div id="settings-sidebar" class="mb-6 p-4 ">
                     
                         <div class="enter justify-between mb-4 border-gray-600 pt-4">
                             <label for="connection_string" class="block mb-2">SQL Connection URI</label>
-                            <textarea id="connection_string" name="connection_string" placeholder="postgresql://user:password@host/dbname..." class="w-full p-2 h-24 bg-gray-700 border border-gray-600 rounded resize-none text-gray-300">{{ connection_string }}</textarea>
+                            <textarea id="connection_string" name="connection_string" placeholder="postgresql://user:password@host/dbname..." class="w-full p-2 h-48 bg-gray-700 border border-gray-600 rounded resize-none text-gray-300">{{ connection_string }}</textarea>
                         </div>
                     </div>
                     
-                <!-- </form> -->
+                </form>
                 
             </div>
-            <!-- <button form="settings-form" type="submit" class="w-full p-2 text-gray-900 bg-blue-300 rounded hover:bg-blue-500 mt-4" hidden>Save Settings</button> -->
+            <button form="settings-form" type="submit" class="w-full p-2 text-gray-900 bg-blue-300 rounded hover:bg-blue-500 mt-4">Connect</button>
         </div>
 
         <!-- Main Content -->
         <div class="flex-1 p-4 flex flex-col overflow-y-auto">
+            
             <div class="flex-1 bg-gray-700 rounded-lg p-4 overflow-y-auto mb-4">
                 <h3 class="text-xl mb-2">Output</h3>
                 <p>{{ message }}</p>
                 <p>{{ sources }}</p>
             </div>
-            
+            <form id="message-form" method="POST" action="/sql_input" class="flex items-center space-x-2">
                 <textarea id="message" name="message" placeholder="Type your message here..." class="w-full p-2 bg-gray-700 border-none rounded resize-none text-gray-300 overflow-hidden" oninput="autoResize(this)"></textarea>
                 <button type="submit" class="w-auto p-2 bg-green-600 rounded hover:bg-green-500 text-white">Send</button>
             </form>

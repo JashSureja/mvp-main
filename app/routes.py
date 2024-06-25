@@ -2,10 +2,11 @@
 import os
 import os.path
 
+from urllib.parse import urlparse
 from flask import Blueprint, redirect, render_template, request, url_for, session, current_app, jsonify
 from .extensions import db
 from .models import User
-
+from langchain_community.utilities import SQLDatabase
 
 main = Blueprint('main', __name__)
 settings_params = {
@@ -50,15 +51,24 @@ def menu():
         return render_template('sql_agent.html',settings=settings_params, message="")
 
 
+@main.route('/sql_set_uri', methods=['POST'])
+def save_uri():
+    langchain = current_app.config["LANGCHAIN"]
+    data = request.form
+    connection_string = str(data.get('connection_string'))
+    
+    langchain.db = SQLDatabase.from_uri(connection_string)
+    langchain.agent = langchain.sql_agent()
+    return render_template('sql_agent.html', message="Database Connected", connection_string = connection_string)
+
+
 @main.route('/sql_input', methods=['GET', 'POST'])
 def sql_process():
     langchain = current_app.config["LANGCHAIN"]
     data = request.form
     connection_string = str(data.get('connection_string'))
     query = data.get('message')
-    print(connection_string)
-    agent = langchain.sql_agent(connection_string = connection_string)
-    response = agent.invoke({"input": query})
+    response = langchain.agent.invoke({"input": query})
     return render_template('sql_agent.html', message=response['output'], connection_string = connection_string)
 
 
@@ -107,6 +117,7 @@ def chat():
         return render_template('index.html', settings=settings_params, message="Settings saved successfully!", documents=files_existing)
     else: 
         return render_template('index.html', settings=settings_params, message="Select at least one document.", documents=files_existing)
+
 
 @main.route('/send_message', methods=['POST'])
 def send_message():

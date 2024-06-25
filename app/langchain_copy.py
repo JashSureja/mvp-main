@@ -32,6 +32,7 @@ from langchain_openai.embeddings import OpenAIEmbeddings
 from langchain_postgres.vectorstores import PGVector
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+from urllib.parse import urlparse
 from langchain_community.utilities import SQLDatabase
 from langchain_community.agent_toolkits.sql.prompt import SQL_FUNCTIONS_SUFFIX
 from langchain_core.messages import AIMessage
@@ -547,20 +548,21 @@ class LangChain:
             )
         return rag_chain
 
-    def call_csv_agent(query):
-        csv_file = "uploaded csv file"
+    # def call_csv_agent(query):
+    #     csv_file = "uploaded csv file"
 
-        if csv_file is not None:
-            agent = create_csv_agent(OpenAI(temperature=0), csv_file, verbose=True)
+    #     if csv_file is not None:
+    #         agent = create_csv_agent(OpenAI(temperature=0), csv_file, verbose=True)
 
-            user_question = query
+    #         user_question = query
 
-            if user_question is not None and user_question != "":
-                agent.invoke(user_question)
+    #         if user_question is not None and user_question != "":
+    #             agent.invoke(user_question)
 
 
-    def sql_agent(connection_string):    
-        db = SQLDatabase.from_uri(connection_string)
+    def sql_agent(self):    
+        
+        db = self.db
         
         llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
     
