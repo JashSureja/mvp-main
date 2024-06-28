@@ -204,6 +204,21 @@ class LangChain:
             )
         )
 
+    def insert_user(self, first_name, last_name, org_name, email, password):
+        db_params = self.db_params
+        conn =  psycopg.connect(**db_params)
+        cur = conn.cursor()
+        cur.execute("INSERT INTO organization (org_name) VALUES (%s) ON CONFLICT (org_name) DO NOTHING", (org_name,))
+        cur.execute("SELECT org_name FROM organization WHERE org_name = '%s'",org_name)
+        org_id = [row[0] for row in cur.fetchall()][0]
+        cur.execute("""INSERT INTO users (first_name, last_name, org_id, email, password) 
+            VALUES (%s, %s, %s, %s, %s)
+        """, (first_name, last_name, org_id, email, password))
+        conn.commit()
+
+
+
+
     def create_table(self):
         conn = None
         try:
@@ -331,7 +346,7 @@ class LangChain:
                 documents = text_splitter.split_documents(document)
                 
                 collection_name = str(organisation_id) + str(project_id) + filename
-                vectorstore = PGVector.from_documents(
+                PGVector.from_documents(
                     documents=documents,
                     embedding=self.embeddings,
                     connection=self.connection_string,

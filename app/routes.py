@@ -24,17 +24,41 @@ settings_params = {
 def home():
     if 'logged_in' in session and session['logged_in']:
         return render_template('menu.html')
+    return render_template('user_login.html')
+
+
+
+@main.route('/signup', methods=['GET'])
+def signup():
+    return render_template('signup.html')
+
+
+@main.route('/login', methods=['GET'])
+def login():
     return render_template('login.html')
 
 
+@main.route('/signup_form', methods=['POST'])
+def signup_form():
+    langchain = current_app.config["LANGCHAIN"]
+    data = request.form
+    first_name = data['first_name']
+    last_name = data['last_name']
+    org_name = data['org_name']
+    email = data['email']
+    password = data['password']
+    langchain.insert_user(first_name, last_name, org_name, email, password)
+    return render_template('menu.html')
 
-@main.route('/login', methods=['POST'])
-def login():
+
+@main.route('/login_form', methods=['POST'])
+def login_form():
     password = request.form['password']
     if password == os.getenv('SESSION_PASSWORD'):
         session['logged_in'] = True
         return render_template('menu.html')
     return render_template('login.html', error="Invalid password")
+
 
 @main.route('/menu', methods=['POST'])
 def menu():
@@ -112,11 +136,11 @@ def chat():
     }
     print(settings_params)
     documents = settings_params['documents']
-    if len(documents) != 0:
+    if len(documents) != 0 :
         langchain.connect_vectorstores(1,1,documents, settings_params)
         return render_template('index.html', settings=settings_params, message="Settings saved successfully!", documents=files_existing)
     else: 
-        return render_template('index.html', settings=settings_params, message="Select at least one document.", documents=files_existing)
+        return render_template('index.html', settings=settings_params, message="Please select at least one document for retrieval.", documents=files_existing)
 
 
 @main.route('/send_message', methods=['POST'])

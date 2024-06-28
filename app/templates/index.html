@@ -45,8 +45,8 @@
                     <div id="settings-sidebar" class="mb-6 border border-gray-600 p-4 rounded overflow-y-scroll scrollbar-thin">
                         <!-- <h3 class="text-xl mb-2">Configurations</h3> -->
                         <label for="provider" class="block mb-2">Main Model</label>
-                        <select id="provider" name="provider" class="w-full p-2 mb-4 bg-gray-700 border border-gray-600 rounded text-gray-300">
-                            <option value="" {% if not settings.provider %}selected{% endif %}>Select a main model</option>
+                        <select id="provider" name="provider" class="w-full p-2 mb-4 bg-gray-700 border border-gray-600 rounded text-gray-300" required>
+                            <option value="" {% if not settings.provider %}selected{% endif %} >Select a main model</option>
                             <option value="openai" {% if settings.provider == 'openai' %}selected{% endif %}>OpenAI</option>
                             <option value="anthropic" {% if settings.provider == 'anthropic' %}selected{% endif %}>Anthropic</option>
                             <option value="cohere" {% if settings.provider == 'cohere' %}selected{% endif %}>Cohere</option>
@@ -54,7 +54,7 @@
                             <option value="google" {% if settings.provider == 'google' %}selected{% endif %}>Google</option>
                         </select>
 
-                        <select id="model_name" name="model_name" class="w-full p-2 mb-4 bg-gray-700 border border-gray-600 rounded text-gray-300">
+                        <select id="model_name" name="model_name" class="w-full p-2 mb-4 bg-gray-700 border border-gray-600 rounded text-gray-300" required>
                         </select>
                         
                         <div class="flex items-center justify-between mb-4 border-t border-gray-600 pt-4">
@@ -80,7 +80,7 @@
                         </div>
                         <div class="enter justify-between mb-4 border-t border-gray-600 pt-4">
                             <label for="system_prompt" class="block mb-2">System Prompt</label>
-                            <textarea id="system_prompt" name="system_prompt" placeholder="You are a..." class="w-full p-2 h-24 bg-gray-700 border border-gray-600 rounded resize-none text-gray-300">{{ settings.system_prompt }}</textarea>
+                            <textarea id="system_prompt" name="system_prompt" placeholder="You are a..." class="w-full p-2 h-24 bg-gray-700 border border-gray-600 rounded resize-none text-gray-300" required>{{ settings.system_prompt }}</textarea>
                         </div>
                     </div>
 
