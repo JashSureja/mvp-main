@@ -111,21 +111,21 @@ class LangChain:
         pg_port = os.getenv("POSTGRE_PORT")
         pg_dbname = os.getenv("POSTGRE_DBNAME")
 
-        # self.db_params = {
-        #     'dbname': pg_dbname,
-        #     'user': pg_user,
-        #     'password': pg_password,
-        #     'host': pg_host,
-        #     'port': pg_port
-        # }
-
         self.db_params = {
-            'dbname': "steinn_db",
-            'user': "postgres",
-            'password': "postgre",
-            'host': "localhost",
-            'port': 5432
+            'dbname': pg_dbname,
+            'user': pg_user,
+            'password': pg_password,
+            'host': pg_host,
+            'port': pg_port
         }
+
+        # self.db_params = {
+        #     'dbname': "steinn_db",
+        #     'user': "postgres",
+        #     'password': "postgre",
+        #     'host': "localhost",
+        #     'port': 5432
+        # }
 
         # self.pg_conn = psycopg.connect(**db_params)
         self.connection_string = (
