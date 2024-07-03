@@ -111,13 +111,22 @@ class LangChain:
         pg_port = os.getenv("POSTGRE_PORT")
         pg_dbname = os.getenv("POSTGRE_DBNAME")
 
+        # self.db_params = {
+        #     'dbname': pg_dbname,
+        #     'user': pg_user,
+        #     'password': pg_password,
+        #     'host': pg_host,
+        #     'port': pg_port
+        # }
+
         self.db_params = {
-            'dbname': pg_dbname,
-            'user': pg_user,
-            'password': pg_password,
-            'host': pg_host,
-            'port': pg_port
+            'dbname': "steinn_db",
+            'user': "postgres",
+            'password': "postgre",
+            'host': "localhost",
+            'port': 5432
         }
+
         # self.pg_conn = psycopg.connect(**db_params)
         self.connection_string = (
             os.getenv('DATABASE_URL')
@@ -204,16 +213,21 @@ class LangChain:
             )
         )
 
-    def insert_user(self, first_name, last_name, org_name, email, password):
+    def insert_user(self, first_name, last_name, email, password, organization_name):
         db_params = self.db_params
         conn =  psycopg.connect(**db_params)
         cur = conn.cursor()
-        cur.execute("INSERT INTO organization (org_name) VALUES (%s) ON CONFLICT (org_name) DO NOTHING", (org_name,))
-        cur.execute("SELECT org_name FROM organization WHERE org_name = '%s'",org_name)
-        org_id = [row[0] for row in cur.fetchall()][0]
-        cur.execute("""INSERT INTO users (first_name, last_name, org_id, email, password) 
+        cur.execute("INSERT INTO organizations (name) VALUES (%s) ON CONFLICT (name) DO NOTHING RETURNING id", (organization_name,))
+        organization_id = cur.fetchone()
+        if organization_id:
+            organization_id = organization_id[0]
+        else:
+            cur.execute("SELECT id FROM organizations WHERE name = (%s)",(organization_name,))
+            organization_id = cur.fetchone()[0]
+        conn.commit()
+        cur.execute("""INSERT INTO users (first_name, last_name, email, password, organization_id) 
             VALUES (%s, %s, %s, %s, %s)
-        """, (first_name, last_name, org_id, email, password))
+        """, (first_name, last_name, email, password,organization_id))
         conn.commit()
 
 
@@ -243,7 +257,7 @@ class LangChain:
             if conn is not None:
                 conn.close()
 
-    def upload_document(self, organization_id, project_id, file):
+    def upload_document(self, organization_id, chunk_size, chunk_overlap, file):
 
         #  upload to postgresql database
         conn = None
@@ -253,11 +267,13 @@ class LangChain:
             cur = conn.cursor()
             if file:
                 filename = file.filename
+                file_content = file.read().decode('utf-8')
             
             cur.execute("""
-                INSERT INTO documents (organization_id, project_id, filename)
-                VALUES (%s, %s, %s)
-            """, (organization_id, project_id, filename))
+                INSERT INTO documents (organization_id, filename, content, chunk_size, chunk_overlap)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (organization_id, filename, file_content, chunk_size, chunk_overlap))
+            
             conn.commit()
             print(f"File {filename} uploaded successfully.")
             cur.close()
@@ -267,73 +283,36 @@ class LangChain:
             if conn is not None:
                 conn.close()
 
-        # upload to s3 bucket 
-        
-        
-        # s3_client = boto3.client(
-        #     service_name = 's3' 
-        # )
-        self.s3 = boto3.resource("s3")
-        
-        s3_filename = self.prefix_folder + str(organization_id) + str(project_id) + file.filename
-
-        self.s3.Bucket(self.bucket).upload_fileobj(file, s3_filename)
-        # response = s3_client.upload_fileobj(file_name, bucket, s3_filename)
-        print("uploaded", file.filename)
-
-
-    def get_uploaded_file(self, organization_id,project_id, file_name):
-        s3client = boto3.client(
-            's3',
-            region_name='us-east-1'
-        )
-
-        path_to_file = self.prefix_folder + str(organization_id) + str(project_id) + file_name
-        fileobj = s3client.get_object(
-            Bucket=self.bucket,
-            Key= path_to_file
-        ) 
-        return fileobj
-
 
 
 
     def call_pgvector(
-        self, organisation_id, project_id, file, chunk_size, chunk_overlap
+        self, organization_id, file, chunk_size, chunk_overlap
     ):
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size, chunk_overlap=chunk_overlap
         )
         # for each file, check the extension and select loader accordingly
-        files_existing = self.get_file_names()
         
-        if file.filename not in files_existing:
+        files_existing = self.get_file_names(organization_id)
+        if files_existing is None:
+            files_existing = []
+        collection_name = str(chunk_size) + '_' + str(chunk_overlap) + '_' + file.filename
+        if collection_name not in files_existing:
             try:
-                
+                db_params = self.db_params
+                conn =  psycopg.connect(**db_params)
+                cur = conn.cursor()
                 file_content = file.read().decode('utf-8')
                 filename = file.filename
-                # # temp_path = os.path.join("uploads", filename)
-                # # with open(temp_path, 'wb') as temp_file:
-                # #     temp_file.write(file_content)
-                
-                    
-                # print("inside for loop")
-                # if ".txt" in filename:
-                #     loader = TextLoader(temp_path)
-                #     doc = loader.load()
-                #     print("--------------------------------")
-                #     print(doc)
-                #     print("--------------------------------")
-                # elif ".pdf" in filename:
-                #     loader = PyMuPDFLoader(os.path.join("uploads/", filename))
-                #     doc = loader.load()
-
-                # elif ".docx" in filename:
-                #     doc = docx2txt.process(file)
-
-                # else:
-                #     print("Not a valid file format")
+                cur.execute("""INSERT INTO documents (organization_id, filename, content, chunk_size, chunk_overlap)
+                VALUES (%s, %s, %s, %s, %s)
+                """, (organization_id, filename, file_content, chunk_size, chunk_overlap))
+                conn.commit()
+                print(f"File {filename} uploaded successfully.")
+                cur.close()
                 metadata = {
+                    "organization_id": organization_id,
                     "source": filename
                 }
 
@@ -345,7 +324,8 @@ class LangChain:
                 
                 documents = text_splitter.split_documents(document)
                 
-                collection_name = str(organisation_id) + str(project_id) + filename
+                collection_name = str(chunk_size) + '_' + str(chunk_overlap) + '_' + file.filename
+                
                 PGVector.from_documents(
                     documents=documents,
                     embedding=self.embeddings,
@@ -353,20 +333,15 @@ class LangChain:
                     collection_name=collection_name,
                 )
                 
-
-                #         if vectorstore is not None:
-                #             vectors = vectors.append("created")
-                # if len(vectors)==len(files):
-                
                 
                 return("Vectorstore Creation Successful!")
             
             except Exception as e:
                 return {'error': str(e)}, 500
             
-            # finally:
-            #     if os.path.exists(temp_path):
-            #         os.remove(temp_path)
+            finally:
+                if conn is not None:
+                    conn.close()
         else: 
             return("Vectorstore Exists!")
            
@@ -374,13 +349,13 @@ class LangChain:
         
 
 
-    def get_file_names(self):
+    def get_file_names(self, organization_id):
         conn = None
         try:
             db_params = self.db_params
             conn =  psycopg.connect(**db_params)
             cur = conn.cursor()
-            cur.execute("SELECT filename FROM documents")
+            cur.execute("SELECT CONCAT( chunk_size, '_', chunk_overlap, '_', filename) FROM documents WHERE organization_id = (%b);",(organization_id,))
             file_names = [row[0] for row in cur.fetchall()]
             cur.close()
             return file_names
@@ -392,7 +367,7 @@ class LangChain:
 
 
     def connect_vectorstores(
-        self, organisation_id, project_id, collection_array, settings_params
+        self, organization_id, collection_array, settings_params
     ):
         retriever_array = []
 
@@ -409,7 +384,7 @@ class LangChain:
         for filename in collection_array:
             vectorstore = PGVector.from_existing_index(
                 embedding = self.embeddings,
-                collection_name = str(organisation_id) + str(project_id) + filename,
+                collection_name = filename,
                 connection = self.connection_string,
             )
             print("VectorStore connected")
@@ -497,8 +472,8 @@ class LangChain:
 
 
 
-    def call_html_parser(self,organisation_id, project_id, url, settings_params):
-        collection_name = organisation_id + project_id + url
+    def call_html_parser(self,organization_id, project_id, url, settings_params):
+        collection_name = organization_id + project_id + url
         
         top_k = settings_params["top_k"]
         top_p = settings_params["top_p"]
@@ -606,9 +581,16 @@ class LangChain:
         
         return agent_executor
 
-
-
-
+    def get_organization_id(self,organization_name):
+        db_params = self.db_params
+        conn =  psycopg.connect(**db_params)
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM organizations WHERE name = (%s)",(organization_name,))
+        organization_id = cur.fetchone()[0]
+        conn.commit()
+        if conn is not None:
+            conn.close()
+        return organization_id
 
 
     def get_response(self, query):

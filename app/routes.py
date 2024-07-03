@@ -47,13 +47,19 @@ def signup_form():
     org_name = data['org_name']
     email = data['email']
     password = data['password']
-    langchain.insert_user(first_name, last_name, org_name, email, password)
+    langchain.insert_user(first_name, last_name, email, password, org_name )
+    global organization_id
+    organization_id = langchain.get_organization_id(org_name)
     return render_template('menu.html')
 
 
 @main.route('/login_form', methods=['POST'])
 def login_form():
+    global organization_id
+    langchain = current_app.config["LANGCHAIN"]
     password = request.form['password']
+    org_name = request.form['org_name']
+    organization_id = langchain.get_organization_id(org_name)
     if password == os.getenv('SESSION_PASSWORD'):
         session['logged_in'] = True
         return render_template('menu.html')
@@ -62,11 +68,16 @@ def login_form():
 
 @main.route('/menu', methods=['POST'])
 def menu():
+    global organization_id
     langchain = current_app.config["LANGCHAIN"]
-    existing_documents = langchain.get_file_names()
+    existing_documents = langchain.get_file_names(organization_id)
     selected_menu = request.form['selected_menu']
     if selected_menu == "upload_documents":
-        return render_template('index.html',settings=settings_params, message="", documents=existing_documents)
+        if existing_documents is not None:
+            return render_template('index.html',settings=settings_params, message="", documents=existing_documents)
+        else: 
+            return render_template('index.html',settings=settings_params, message="", documents=[])
+
 
     # elif selected_menu == "website_agent":
     #     return render_template('web_agent.html',settings=settings_params, message="")
@@ -98,8 +109,9 @@ def sql_process():
 
 @main.route('/index')
 def index():
+    global organization_id
     langchain = current_app.config["LANGCHAIN"]
-    existing_documents = langchain.get_file_names()
+    existing_documents = langchain.get_file_names(organization_id)
     return render_template('index.html',settings=settings_params, message="", documents=existing_documents)
 
 
@@ -116,10 +128,10 @@ def index():
 def chat():
     
     
-    global settings_params
+    global settings_params, organization_id
     
     langchain = current_app.config["LANGCHAIN"]
-    files_existing = langchain.get_file_names()
+    files_existing = langchain.get_file_names(organization_id)
     data = request.form
 
     settings_params = {
@@ -132,12 +144,14 @@ def chat():
         'cite_sources': data.get('cite_sources', ''),
         'chat_history': data.get('chat_history',''),
         'documents' : data.getlist('documents'),
-        'existing_docs' : files_existing
+        'existing_docs' : files_existing,
+        "chunk_size" : data.get('chunk_size', 1000),
+        "chunk_overlap" : data.get('chunk_overlap',50)
     }
     print(settings_params)
     documents = settings_params['documents']
     if len(documents) != 0 :
-        langchain.connect_vectorstores(1,1,documents, settings_params)
+        langchain.connect_vectorstores(organization_id, documents, settings_params)
         return render_template('index.html', settings=settings_params, message="Settings saved successfully!", documents=files_existing)
     else: 
         return render_template('index.html', settings=settings_params, message="Please select at least one document for retrieval.", documents=files_existing)
@@ -166,7 +180,7 @@ def send_message():
 def upload_file():
     
     langchain = current_app.config["LANGCHAIN"]
-    global settings_params
+    global settings_params, organization_id
     files = request.files.getlist('documents')
     message = ""
     chunk_size = request.form.get('chunk_size')
@@ -177,13 +191,13 @@ def upload_file():
         if file.filename != '':
             settings_params['documents'].append(file.filename)
             
-            message = langchain.call_pgvector(1, 1, file, int(chunk_size), int(chunk_overlap))
+            message = langchain.call_pgvector(organization_id, file, int(chunk_size), int(chunk_overlap))
             # langchain.upload_files("org_1", "project_1", file)
             # print(chunk_overlap,chunk_size)
-            langchain.upload_document(1, 1,file)
+            # langchain.upload_document(organization_id, chunk_size, chunk_overlap, file)
             
             
-    files_existing = langchain.get_file_names()
+    files_existing = langchain.get_file_names(organization_id)
     if message != "":
         pass
     else:

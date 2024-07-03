@@ -91,15 +91,24 @@
                         <label for="documents" class="block mb-2">Select Documents</label>
                         <div id="documents" class="space-y-2">
                             {% for document in documents if document in settings.documents %}
+                            
                             <div class="flex items-center space-x-2">
+                                
+                               
                                 <input type="checkbox" id="{{ document }}" name="documents" value="{{ document }}" checked class="text-gray-900">
                                 <label for="{{ document }}">{{ document }}</label>
+                               
+                                
                             </div>
                             {% endfor %}
                             {% for document in documents if document not in settings.documents %}
+                                
                             <div class="flex items-center space-x-2">
-                                <input type="checkbox" id="{{ document }}" name="documents" value="{{ document }}" class="text-gray-900">
+                                
+                               <input type="checkbox" id="{{ document }}" name="documents" value="{{ document }}" class="text-gray-900">
                                 <label for="{{ document }}">{{ document }}</label>
+
+                                
                             </div>
                             {% endfor %}
                         </div>
