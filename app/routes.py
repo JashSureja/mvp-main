@@ -1,9 +1,7 @@
 
 import os
 import os.path
-
-from urllib.parse import urlparse
-from flask import Blueprint, redirect, render_template, request, url_for, session, current_app, jsonify
+from flask import Blueprint, redirect, render_template, request, url_for, session, current_app
 from .extensions import db
 from .models import User
 from langchain_community.utilities import SQLDatabase
@@ -20,12 +18,12 @@ settings_params = {
     'existing_docs':[]
 }
 
+
 @main.route("/")
 def home():
     if 'logged_in' in session and session['logged_in']:
         return render_template('user_login.html')
     return render_template('user_login.html')
-
 
 
 @main.route('/signup', methods=['GET'])
@@ -50,7 +48,8 @@ def signup_form():
     langchain.insert_user(first_name, last_name, email, password, org_name )
     global organization_id
     organization_id = langchain.get_organization_id(org_name)
-    return render_template('project_menu.html')
+    projects = langchain.get_projects(organization_id)
+    return render_template('project_menu.html', projects=projects)
 
 
 @main.route('/login_form', methods=['POST'])
@@ -75,6 +74,7 @@ def create():
     langchain.create_project(organization_id, project_name)
     return render_template('menu.html')
 
+
 @main.route('/create_bot', methods=['POST'])
 def menu():
     global organization_id
@@ -86,8 +86,6 @@ def menu():
             return render_template('index.html',settings=settings_params, message="", documents=existing_documents)
         else: 
             return render_template('index.html',settings=settings_params, message="", documents=[])
-
-
     # elif selected_menu == "website_agent":
     #     return render_template('web_agent.html',settings=settings_params, message="")
 
@@ -141,7 +139,6 @@ def index():
     langchain = current_app.config["LANGCHAIN"]
     existing_documents = langchain.get_file_names(organization_id)
     return render_template('index.html',settings=settings_params, message="", documents=existing_documents)
-
 
 
 # @main.route('/documents', methods=['POST','GET'])
@@ -235,8 +232,6 @@ def upload_file():
     return render_template('index.html', settings=settings_params, message=message, documents=files_existing)
 
 
-
-
 @main.route('/save_to_db', methods=['POST'])
 def save_to_db():
     global organization_id,project_name, settings_params
@@ -245,7 +240,6 @@ def save_to_db():
     bot_name = request.form.get('bot_name','')
     langchain.save_to_db(bot_name,organization_id, project_name, settings_params)
     return render_template('index.html', settings=settings_params, message="Saved to DB", documents=files_existing)
-
 
 
 @main.route('/add/<username>')
