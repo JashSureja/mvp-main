@@ -21,7 +21,7 @@ def create_app(debug=False):
 
     app.register_blueprint(main)
     langchain = LangChain()
-    langchain.create_table()
+
     if debug:
         app.config['DEBUG'] = True
 

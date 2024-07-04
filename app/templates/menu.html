@@ -8,12 +8,12 @@
 </head>
 <body class="bg-gray-900 text-white flex justify-center items-center h-screen m-0 p-0">
     <div class="bg-gray-800 rounded-lg p-6 w-full max-w-md">
-        <h3 class="text-lg mb-4">Select an Option</h3>
-        <form action="/menu" method="POST" class="flex flex-col gap-4">
-            <button type="submit" name="selected_menu" value="upload_documents" class="py-2 bg-blue-600 hover:bg-blue-500 rounded text-white text-lg">Document Retrieval Agent</button>
-            <button type="submit" name="selected_menu" value="web_agent" class="py-2 bg-blue-600 hover:bg-blue-500 rounded text-white text-lg">Web Agent</button>
-            <button type="submit" name="selected_menu" value="sql_agent" class="py-2 bg-blue-600 hover:bg-blue-500 rounded text-white text-lg">SQL Agent</button>
-        </form>
+        
+            <form action="/create_bot" method="POST" class="flex flex-col gap-4">
+                <button type="submit" name="selected_menu" value="rag_agent" class="py-2 bg-blue-600 hover:bg-blue-500 rounded text-white text-lg">Document Retrieval Agent</button>
+                <button type="submit" name="selected_menu" value="web_agent" class="py-2 bg-blue-600 hover:bg-blue-500 rounded text-white text-lg">Web Agent</button>
+                <button type="submit" name="selected_menu" value="sql_agent" class="py-2 bg-blue-600 hover:bg-blue-500 rounded text-white text-lg">SQL Agent</button>
+            </form>
     </div>
 </body>
 </html>

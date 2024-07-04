@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-white flex justify-center items-center h-screen m-0 p-0">
+    <div class="h-72 bg-gray-800 border border-gray-700 rounded-lg p-6 w-full max-w-4xl flex">
+        <!-- Left Side - Create New Project Menu -->
+        <div class="w-1/2 pr-6">
+            <h3 class="text-lg mb-4">Create New Project</h3>
+            
+            <form action="/index" method="POST">
+                <button type="submit" class="py-2 px-4 text-white bg-green-600 rounded hover:bg-green-500 ">Create Bot</button>
+            </form>
+        </div>
+
+        <!-- Divider -->
+        <div class="border-l border-gray-700"></div>
+
+        <!-- Right Side - Projects List -->
+        <div class="w-1/2 pl-6 overflow-y-auto scrollbar-thin">
+            <h3 class="text-lg mb-4">Bots of <span>{{ project }}</span> </h3>
+                <form action="/load_bot" method="POST" class="flex flex-col gap-4">
+                    {% for bot in bots %}
+                        <button type="submit" name="selected_bot" value="{{ bot }}" class="py-2 bg-green-600 hover:bg-green-500 rounded text-white">{{ bot }}</button>
+                    {% endfor %}
+                </form>
+        </div>
+    </div>
+    
+</body>
+</html>

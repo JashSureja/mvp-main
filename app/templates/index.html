@@ -40,7 +40,7 @@
             </div>
             
             <!-- Settings Sidebar -->
-            <div class="p-3 border-r border-gray-700 overflow-y-auto flex-1 scrollbar-thin" id="parent-sidebar">
+            <div class="p-3 border-r h-24 border-gray-700 overflow-y-auto flex-1 scrollbar-thin" id="parent-sidebar">
                 <form id="settings-form" method="POST" action="/settings">
                     <div id="settings-sidebar" class="mb-6 border border-gray-600 p-4 rounded overflow-y-scroll scrollbar-thin">
                         <!-- <h3 class="text-xl mb-2">Configurations</h3> -->
@@ -133,7 +133,12 @@
                 <!-- <button form="settings-form" type="submit" class="w-full p-2 bg-green-600 rounded hover:bg-green-500 mt-4">Save Settings</button> -->
     
             </div>
-            <button form="settings-form" type="submit" class="w-full p-2 text-gray-900 bg-blue-300 rounded hover:bg-blue-500 mt-4">Save Settings</button>
+            <div class="flex space-x-4">
+                  
+            <button form="settings-form" type="submit" class="w-full p-2 text-gray-900 bg-blue-300 rounded hover:bg-blue-500">Set The Parameters</button>
+            
+            <button type="submit" id="openPopup" class=" w-full p-2 text-gray-900 bg-green-300 rounded hover:bg-green-600">Save To Database</button>
+            </div>
         </div>
 
         <!-- Main Content -->
@@ -148,6 +153,17 @@
                 <button type="submit" class="w-auto p-2 bg-green-600 rounded hover:bg-green-500 text-white">Send</button>
             </form>
             
+        </div>
+    </div>
+    
+    <div id="myPopup" class="fixed inset-0 hidden bg-black bg-opacity-50 flex justify-center items-center">
+        <div class="bg-gray-800 text-white rounded-lg shadow-lg p-6 w-full max-w-sm">
+            <span class="close absolute top-2 right-2 text-gray-700 cursor-pointer" id="closePopup">&times;</span>
+            <h2 class="text-xl mb-4">Enter Bot Name</h2>
+            <form action="/save_to_db" method="POST">
+                <input type="text" name="bot_name" class="p-2 bg-gray-700 border border-gray-400 rounded w-full mb-4" placeholder="Jarvis">
+                <button type="submit" class="py-2 px-4 text-gray-900 bg-green-300 rounded hover:bg-green-600 ">Save</button>
+            </form>
         </div>
     </div>
 
@@ -224,6 +240,23 @@
 
         // Show settings sidebar by default
         // document.getElementById('settings-sidebar').classList.remove('hidden');
+        var popup = document.getElementById('myPopup');
+        var btn = document.getElementById('openPopup');
+        var span = document.getElementById('closePopup');
+
+        btn.onclick = function() {
+            popup.classList.remove('hidden');
+        }
+
+        span.onclick = function() {
+            popup.classList.add('hidden');
+        }
+
+        window.onclick = function(event) {
+            if (event.target == popup) {
+                popup.classList.add('hidden');
+            }
+        }
     </script>
 </body>
 

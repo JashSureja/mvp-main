@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .scrollbar-thin::-webkit-scrollbar {
+            width: 6px; /* Width of the scrollbar */
+        }
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: #636363; /* Track color */
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: #adadad; /* Thumb color */
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+            background: #dadada; /* Thumb color on hover */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex justify-center items-center h-screen m-0 p-0">
+    <div class="h-72 bg-gray-800 border border-gray-700 rounded-lg p-6 w-full max-w-4xl flex">
+        <!-- Left Side - Create New Project Menu -->
+        <div class="w-1/2 pr-6">
+            <h3 class="text-lg mb-4">Create New Project</h3>
+            
+            <form action="/create" method="POST">
+                <input type="text" name="project_name" class="p-2 bg-gray-700 border border-gray-400 rounded w-full mb-4" placeholder="ProjectOne">
+                <button type="submit" class="py-2 px-4 text-white bg-green-600 rounded hover:bg-green-500 text-lg">Create</button>
+            </form>
+        </div>
+
+        <!-- Divider -->
+        <div class="border-l border-gray-700"></div>
+
+        <!-- Right Side - Projects List -->
+        <div class="w-1/2 pl-6 overflow-y-auto scrollbar-thin">
+            <h3 class="text-lg mb-4">Projects</h3>
+            <form action="/select_project" method="POST" class="flex flex-col gap-4">
+                {% for project in projects %}
+                    <button type="submit" name="selected_project" value="{{ project }}" class="py-2 bg-green-600 hover:bg-green-500 rounded text-white text-lg">{{ project }}</button>
+                {% endfor %}
+            </form>
+        </div>
+    </div>
+</body>
+</html>

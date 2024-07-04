@@ -1,5 +1,5 @@
 import os
-import boto3
+import json
 import docx2txt
 import psycopg
 from flask import jsonify
@@ -131,7 +131,8 @@ class LangChain:
         self.connection_string = (
             os.getenv('DATABASE_URL')
         )
-        print("pgsql connected")
+        # self.connection_string = "postgresql://postgres:postgre@localhost/steinn_db"
+        # print("pgsql connected")
 
         #  Get existing files from storage
         
@@ -214,41 +215,22 @@ class LangChain:
         )
 
     def insert_user(self, first_name, last_name, email, password, organization_name):
-        db_params = self.db_params
-        conn =  psycopg.connect(**db_params)
-        cur = conn.cursor()
-        cur.execute("INSERT INTO organizations (name) VALUES (%s) ON CONFLICT (name) DO NOTHING RETURNING id", (organization_name,))
-        organization_id = cur.fetchone()
-        if organization_id:
-            organization_id = organization_id[0]
-        else:
-            cur.execute("SELECT id FROM organizations WHERE name = (%s)",(organization_name,))
-            organization_id = cur.fetchone()[0]
-        conn.commit()
-        cur.execute("""INSERT INTO users (first_name, last_name, email, password, organization_id) 
-            VALUES (%s, %s, %s, %s, %s)
-        """, (first_name, last_name, email, password,organization_id))
-        conn.commit()
-
-
-
-
-    def create_table(self):
         conn = None
         try:
             db_params = self.db_params
             conn =  psycopg.connect(**db_params)
             cur = conn.cursor()
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS documents (
-                    id SERIAL PRIMARY KEY,
-                    organization_id INT,
-                    project_id INT,
-                    filename TEXT,
-                    content BYTEA,
-                    upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
+            cur.execute("INSERT INTO organizations (name) VALUES (%s) ON CONFLICT (name) DO NOTHING RETURNING id", (organization_name,))
+            organization_id = cur.fetchone()
+            conn.commit()
+            if organization_id:
+                organization_id = organization_id[0]
+            else:
+                cur.execute("SELECT id FROM organizations WHERE name = (%s)",(organization_name,))
+                organization_id = cur.fetchone()[0]
+            cur.execute("""INSERT INTO users (first_name, last_name, email, password, organization_id) 
+                VALUES (%s, %s, %s, %s, %s)
+            """, (first_name, last_name, email, password,organization_id))
             conn.commit()
             cur.close()
         except (Exception, psycopg.DatabaseError) as error:
@@ -256,6 +238,92 @@ class LangChain:
         finally:
             if conn is not None:
                 conn.close()
+
+    def create_project(self,organization_id, project_name):
+        conn = None
+        try:
+            db_params = self.db_params
+            conn =  psycopg.connect(**db_params)
+            cur = conn.cursor()
+            cur.execute("INSERT INTO projects (name,organization_id) VALUES (%s,%s) ON CONFLICT (name) DO NOTHING", (project_name, organization_id,))
+            conn.commit()
+            cur.close()
+            return "success"
+        except (Exception, psycopg.DatabaseError) as error:
+            print(f"Error: {error}")
+        finally:
+            if conn is not None:
+                conn.close()
+
+    def get_projects(self,organization_id):
+        conn = None
+        try:
+            db_params = self.db_params
+            conn =  psycopg.connect(**db_params)
+            cur = conn.cursor()
+            cur.execute("SELECT name FROM projects WHERE organization_id = (%b);",(organization_id,))
+            project_names = [row[0] for row in cur.fetchall()]
+            cur.close()
+            return project_names
+        except (Exception, psycopg.DatabaseError) as error:
+            print(f"Error: {error}")
+        finally:
+            if conn is not None:
+                conn.close()
+
+
+    def save_to_db(self,bot_name,organization_id, project_name, configs):
+        conn = None
+        try:
+            json_configs = json.dumps(configs)
+            db_params = self.db_params
+            conn =  psycopg.connect(**db_params)
+            cur = conn.cursor()
+            cur.execute("INSERT INTO bots (name,organization_id, project_name, config) VALUES (%s,%s,%s,%s) ON CONFLICT (name) DO NOTHING", (bot_name, organization_id,project_name,json_configs))
+            conn.commit()
+            cur.close()
+            return "success"
+        except (Exception, psycopg.DatabaseError) as error:
+            print(f"Error: {error}")
+        finally:
+            if conn is not None:
+                conn.close()
+
+
+    def get_bots(self,organization_id, project_name):
+        conn = None
+        try:
+            db_params = self.db_params
+            conn =  psycopg.connect(**db_params)
+            cur = conn.cursor()
+            cur.execute("SELECT name FROM bots WHERE organization_id = (%b) AND project_name = (%s);",(organization_id,project_name))
+            bot_names = [row[0] for row in cur.fetchall()]
+            cur.close()
+            return bot_names
+        except (Exception, psycopg.DatabaseError) as error:
+            print(f"Error: {error}")
+        finally:
+            if conn is not None:
+                conn.close()
+
+
+    def get_bot_config(self,organization_id,project_name,bot_name):
+        conn = None
+        try:
+            db_params = self.db_params
+            conn =  psycopg.connect(**db_params)
+            cur = conn.cursor()
+            cur.execute("SELECT config FROM bots WHERE organization_id = (%b) AND project_name = (%s) AND name = (%s);",(organization_id,project_name,bot_name))
+            settings = cur.fetchone()[0]
+            cur.close()
+            print(settings)
+            return settings
+        except (Exception, psycopg.DatabaseError) as error:
+            print(f"Error: {error}")
+        finally:
+            if conn is not None:
+                conn.close()
+
 
     def upload_document(self, organization_id, chunk_size, chunk_overlap, file):
 
