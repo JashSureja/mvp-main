@@ -152,7 +152,6 @@ def index():
 @main.route('/settings', methods=['POST','GET'])
 def chat():
     
-    
     global settings_params, organization_id
     
     langchain = current_app.config["LANGCHAIN"]
@@ -193,9 +192,7 @@ def send_message():
     if cite_sources == "on":
         sources = ["Sources:-"]
         for doc in response['context']:
-            sources.append(doc.metadata['source'])
-        
-        
+            sources.append(doc.metadata['source'])  
         return render_template('index.html', settings=settings_params, message=response['answer'], sources=sources, documents=settings_params['existing_docs'])
     else:    
         return render_template('index.html', settings=settings_params, message=response["answer"], sources='', documents=settings_params['existing_docs'])
@@ -217,11 +214,7 @@ def upload_file():
         if file.filename != '':
             print("in if loop")
             settings_params['documents'].append(file.filename)
-            
             message = langchain.call_pgvector(organization_id, file, int(chunk_size), int(chunk_overlap))
-            # langchain.upload_files("org_1", "project_1", file)
-            # print(chunk_overlap,chunk_size)
-            # langchain.upload_document(organization_id, chunk_size, chunk_overlap, file)
             
     print("outside if")      
     files_existing = langchain.get_file_names(organization_id)
