@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comparison</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .settings-menu {
+            overflow-y: auto;
+            height: 70vh;
+        }
+        #blocks-container {
+            overflow-x: auto;
+        }
+        .scrollbar-thin::-webkit-scrollbar {
+            width: 6px; /* Width of the scrollbar */
+            height: 7.2px;
+        }
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: #303947; /* Track color */
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: #485569; /* Thumb color */
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+            background: #55647e; /* Thumb color on hover */
+        }
+    </style>
+    
+</head>
+<body class="bg-gray-100 h-screen flex flex-col text-white">
+    
+    <div id="upload_popup" class="fixed inset-0 hidden bg-black bg-opacity-50 flex justify-center items-center">
+        <div class="bg-gray-800 text-white rounded-lg shadow-lg p-4 h-96 flex ">
+            <div id="documents-sidebar" class="bg-gray-800 text-white p-6 w-full max-w-sm overflow-y-auto scrollbar-thin">
+                <h2 class="text-xl mb-2">Grounding</h2>
+                <form id="doc_selection" action="/docs_selected" method="POST">
+                    <label for="documents" class="block mb-2 ">Select Documents</label>
+                    <div id="documents" class="space-y-2 overflow-y-auto scrollbar-thin">
+                        {% for document in documents if document in selected_documents %}
+                        <div class="flex items-center space-x-2">
+                            <input type="checkbox" id="{{ document }}" name="documents" value="{{ document }}" checked class="text-gray-900">
+                            <label for="{{ document }}">{{ document }}</label>
+                        </div>
+                        {% endfor %}
+                        {% for document in documents if document not in selected_documents %}
+                            
+                        <div class="flex items-center space-x-2">
+                            
+                        <input type="checkbox" id="{{ document }}" name="documents" value="{{ document }}" class="text-gray-900">
+                            <label for="{{ document }}">{{ document }}</label>
+
+                            
+                        </div>
+                        {% endfor %}
+                        <button type="submit" class="absolute bottom-32 left-1/2 transform -translate-x-1/2 bg-green-300 text-black py-2 px-4 rounded hover:bg-green-700">Done</button>
+   
+                    </div>
+                </form>
+                
+            </div>
+            
+            <div class="bg-gray-800 text-white  p-6 w-full max-w-sm">
+                <span class="close absolute top-2 right-2 text-gray-700 cursor-pointer" id="close_upload_popup">&times;</span>
+                <h4 class="text-xl mb-4">Upload Documents</h4>
+                <form id="upload-form" action="/upload_multi" method="POST" enctype="multipart/form-data" class="space-y-2">
+                    <input class="block w-4/5 text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" aria-describedby="file_input_help" id="file_input" type="file" name="documents" multiple>
+                    <div class="flex items-center justify-between mb-4 border-gray-600 pt-4">
+                        <label for="chunk_size" class="mr-2">Chunk Size:</label>
+                        <input type="number" id="chunk_size" name="chunk_size" min="1000" max="3000" class="w-2/3 p-2 bg-gray-700 border border-gray-600 rounded text-gray-300">
+                    </div>
+                    <div class="flex items-center justify-between mb-4 border-t border-gray-600 pt-4">
+                        <label for="chunk_overlap" class="mr-2">Overlap:</label>
+                        <input type="number" id="chunk_overlap" name="chunk_overlap" min="30" max="300" class="w-2/3 p-2 bg-gray-700 border border-gray-600 rounded text-gray-300">
+                    </div>
+                    <div class="flex items-center justify-between mb-4 border-t border-gray-600 pt-4">
+                        <label for="encoding" class="mr-2">File Encoding:</label>
+                        <input type="text" id="encoding" name="encoding" min="30" max="300" class="w-2/3 p-2 bg-gray-700 border border-gray-600 rounded text-gray-300">
+                    </div>
+                    <div class="flex items-center justify-between mb-4 border-t border-gray-600 pt-4">
+                        <button form="upload-form" type="submit" class="w-20 p-1 bg-blue-500 rounded hover:bg-blue-700">Upload</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="flashModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 hidden">
+        <div class="bg-white rounded shadow-lg p-4">
+            <h5 class="text-lg font-bold mb-2">Message</h5>
+            <div id="flashMessageContent">
+                <!-- Flash message content will be injected here -->
+            </div>
+            <button type="button" class="mt-4 bg-red-500 text-white px-4 py-2 rounded" onclick="closeFlashModal()">Close</button>
+        </div>
+    </div>
+
+    <div class="container bg-gray-700 w-full h-full p-4 overflow-x-auto flex space-x-4 scrollbar-thin" id="blocks-container">
+
+        <!-- Blocks will be added here dynamically -->
+    </div>
+    <div class="bg-gray-700">
+        <button class="bg-green-500 text-white px-4 py-2 rounded m-4 self-start" id="addBlockButton">+ Add Block</button>
+        <button class="bg-green-500 text-white px-4 py-2 rounded m-4 self-start" id="open_upload_popup"">Grounding</button>
+        
+    </div>
+    
+    <script>
+        const settings_store = {{ settings_store | tojson | safe }};
+        
+        // Initialize blocks with existing settings
+        document.addEventListener('DOMContentLoaded', function () {
+            // Fetch existing settings and initialize blocks
+            fetchSettingsAndInitializeBlocks();
+             // Show flash messages if any
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    let flashMessages = {{ messages|tojson }};
+                    showFlashMessages(flashMessages);
+                {% endif %}
+            {% endwith %}
+        });
+
+        function fetchSettingsAndInitializeBlocks() {
+            settings_store.forEach((settings, index) => {
+            addBlockWithListener(index, settings);
+            });
+            blockCount = settings_store.length -1;
+        }
+        
+        function toggleMenu(button) {
+            const menu = button.closest('.block-container').querySelector('.settings-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        function addBlock(blockCount) {
+            
+            // addBlockWithListener(blockCount);
+            const settings = settings_store[blockCount] || { 
+                'block_id': blockCount,
+                'provider': '',
+                'model_name': '',
+                'temperature': 0.4,
+                'top_p': 0.7,
+                'top_k': 2,
+                'cite_sources': '',
+                'chat_history': '',
+                'system_prompt': '',
+                'documents' : '',
+                'query': '',
+                'answer' : '',
+                'sources' : '',
+                'output_tokens': '',
+                'input_tokens': ''
+                
+            };
+            const container = document.getElementById('blocks-container');
+            const newBlock = document.createElement('div');
+            let sourcesHTML = '';
+            if (settings.sources && settings.sources.length > 0) {
+                settings.sources.forEach(source => {
+                    sourcesHTML += `
+                        <div class="flex items-center space-x-2">
+                            <label for="${source}">${source}</label>
+                        </div>
+                    `;
+                });
+            }
+            newBlock.dataset.blockId = blockCount;
+            newBlock.innerHTML = `
+                <div class="block-container h-4/5 bg-gray-800 rounded-lg overflow-hidden flex-shrink-0 flex flex-col">
+                    
+                    
+                    <div class="flex justify-between items-center bg-gray-800 p-2">
+                        <button class="text-white" onclick="toggleMenu(this)">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2m1 5H7a2 2 0 01-2-2V7a2 2 0 012-2h10a2 2 0 012 2v11a2 2 0 01-2 2z" />
+                            </svg>
+                        </button>
+                        <form method="post" action="/close_block/${blockCount}">
+                            <button type="submit" class="text-white">✖</button>
+                        </form>
+                        
+                    </div>
+                    <div class=" p-4 overflow-y-auto h-full scrollbar-thin">
+                        <form id="settings-form-${blockCount}" method="POST" action="/settings/${blockCount}">
+                            <div class="settings-menu hidden p-4 overflow-y-auto scrollbar-thin">
+                            
+                                <div class="mb-6 border border-gray-600 p-4 rounded">
+                                    <label for="provider" class="block mb-2">Main Model</label>
+                            
+                                    <select id="provider-${blockCount}" name="provider-${blockCount}" class="w-full p-2 mb-4 bg-gray-700 border border-gray-600 rounded text-gray-300" required>
+                                        <option value="">Select a provider</option>
+                                        
+                                    </select>
+                                    <select id="model_name-${blockCount}" name="model_name-${blockCount}" class="w-full p-2 mb-4 bg-gray-700 border border-gray-600 rounded text-gray-300" required>
+                                        <option value="">Select a sub model</option>
+                                    </select>
+                                    <div class="flex items-center justify-between mb-4 border-t border-gray-600 pt-4">
+                                        <label for="temperature" class="mr-2">Temperature</label>
+                                        <input type="number" id="temperature" value="${settings.temperature}" name="temperature" step="0.1" min="0" max="1" class="w-2/3 p-2 bg-gray-700 border border-gray-600 rounded text-gray-300">
+                                    </div>
+                                    <div class="flex items-center justify-between mb-4 border-t border-gray-600 pt-4">
+                                        <label for="top_p" class="mr-2">Top P</label>
+                                        <input type="number" id="top_p" value="${ settings.top_p }" name="top_p" step="0.1" min="0" max="1" class="w-2/3 p-2 bg-gray-700 border border-gray-600 rounded text-gray-300">
+                                    </div>
+                                    <div class="flex items-center justify-between mb-4 border-t border-gray-600 pt-4">
+                                        <label for="top_k" class="mr-2">Top K</label>
+                                        <input type="number" id="top_k" value="${ settings.top_k }" name="top_k" step="1" min="1" max="10" class="w-2/3 p-2 bg-gray-700 border border-gray-600 rounded text-gray-300">
+                                    </div>
+                                    <div class="flex items-center justify-between mb-4 border-t border-gray-600 pt-4">
+                                        <label for="cite_sources" class="mr-2">Cite Sources</label>
+                                        <input type="checkbox" id="cite_sources" name="cite_sources" ${ settings.cite_sources ? 'checked' : ''} class="text-gray-900">
+                                    </div>
+                                    <div class="flex items-center justify-between mb-4 border-t border-gray-600 pt-4">
+                                        <label for="chat_history" class="mr-2">Chat History</label>
+                                        <input type="checkbox" ${ settings.chat_history ? 'checked' : ''} id="chat_history" name="chat_history" class="text-gray-900">
+                                    </div>
+                                    <div class="enter justify-between mb-4 border-t border-gray-600 pt-4">
+                                        <label for="system_prompt" class="block mb-2">System Prompt</label>
+                                        <textarea id="system_prompt" name="system_prompt" placeholder="You are a..." class="w-full p-2 h-24 bg-gray-700 border border-gray-600 rounded resize-none text-gray-300">${settings.system_prompt}</textarea>
+                                    </div>
+                                    
+                                </div>
+                            
+                            </div>
+                            <div class="flex-1 p-4 flex flex-col h-full">
+                                <div class="flex-1 bg-gray-800 border border-gray-600 rounded-lg p-4 overflow-y-auto mb-4">
+                                    
+                                    <p>${settings.query}</p>
+                                    <br>
+                                    
+                                    <p>${ settings.answer }</p>
+                                    
+                                    <div>
+                                        ${sourcesHTML}
+                                    </div>
+                                    <br>
+                                    <p class="text-xs"> ${settings.input_tokens} </p>
+                                    <p class="text-xs">${settings.output_tokens}</p>
+                                </div>
+                                
+                                <textarea id="message-${blockCount}" name="message-${blockCount}" placeholder="Type your message here..." class="w-full p-2 bg-gray-100 border-none rounded resize-none text-black overflow-hidden" oninput="autoResize(this)"></textarea>
+                                
+                            </div>
+                        </form>
+                        
+                    </div>
+                    <div id="bot_name_popup" class="fixed inset-0 hidden bg-black bg-opacity-50 flex justify-center items-center">
+                        <div class="bg-gray-800 text-white rounded-lg shadow-lg p-6 w-full max-w-sm">
+                            <span class="close absolute top-2 right-2 text-gray-700 cursor-pointer" id="close_bot_popup">&times;</span>
+                            <h2 class="text-xl mb-4">Enter Bot Name</h2>
+                            <form action="/save_to_db/${blockCount}" method="POST">
+                                <input type="text" name="bot_name-${blockCount}" class="p-2 bg-gray-700 border border-gray-400 rounded w-full mb-4" placeholder="Jarvis">
+                                
+                                <button type="submit" class="py-2 px-4 text-gray-900 bg-green-300 rounded hover:bg-green-600 ">Save</button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                </div>
+                <div class="flex justify-center items-center space-x-4 m-4 ">
+                            <button type="submit" id="open_bot_popup" class=" w-1/2 p-2 text-gray-900 bg-green-300 rounded hover:bg-green-600">Save To Database</button>
+                            <button type="submit" form="settings-form-${blockCount}" class="w-1/2 p-2 bg-green-600 rounded hover:bg-green-500 text-white">Send</button>
+                </div>
+            `;
+            document.getElementById('blocks-container').appendChild(newBlock); // Append to a container
+            updateSubModels(blockCount, settings.provider, settings.model_name);
+            updateProvider(blockCount, settings.provider);
+            adjustBlockWidths();
+
+            
+        }
+        
+
+        function addBlockWithListener(blockCount, settings = {}) {
+            
+            addBlock(blockCount);
+            adjustBlockWidths();
+            
+            document.getElementById(`provider-${blockCount}`).addEventListener('change', function () {
+                const provider = this.value;
+                settings_store[blockCount] = { ...settings_store[blockCount], provider };
+                updateSubModels(blockCount, provider, null);
+                
+            });
+
+            // Save settings when model name changes
+            document.getElementById(`model_name-${blockCount}`).addEventListener('change', function () {
+                const model_name = this.value;
+                settings_store[blockCount] = { ...settings_store[blockCount], model_name };
+            });
+            
+        }
+
+        function adjustBlockWidths() {
+            const container = document.getElementById('blocks-container');
+            const blocks = container.children;
+            const blockWidth = `${Math.min(100 / blocks.length, 49.5)}%`;
+
+            for (const block of blocks) {
+                block.style.width = blockWidth;
+                block.style.minWidth = '34%'; // Ensure minimum width for two blocks per row
+            }
+
+            container.style.overflowX = blocks.length > 2 ? 'scroll' : 'hidden';
+        }
+        
+        function updateProvider(blockCount,selectedProvider) {
+            const modelSelect = document.getElementById(`provider-${blockCount}`);
+            modelSelect.innerHTML = '<option value="">Select a provider</option>';
+
+            const options_provider = [
+                { value:"openai" , text:'OpenAI'},
+                { value:"anthropic" , text:'Anthropic' },
+                { value:"cohere" , text:'Cohere' },
+                { value:"fireworks" , text:'Fireworks'},
+                { value:"google" , text:'Google' },
+                { value:"together-meta" , text:'Meta AI' },
+                { value:"together-qwen" , text:'Qwen'},
+                { value:"together-nous" , text:'Nous Research'},
+                { value:"together" , text:'Together'},
+                {value:"mistral" , text:'Mistral'},   
+            ];
+
+            options_provider.forEach(option => {
+                const isSelected = option.value === selectedProvider ? 'selected' : '';
+                modelSelect.innerHTML += `<option value="${option.value}" ${isSelected}>${option.text}</option>`;
+            });
+        
+        }
+
+
+
+        function updateSubModels(blockCount, provider, selectedModel) {
+            const subModelSelect = document.getElementById(`model_name-${blockCount}`);
+            subModelSelect.innerHTML = '<option value="">Select a sub model</option>';
+
+            if (provider === 'openai') {
+                const options = [
+                    { value: 'gpt-4o', text: 'gpt-4o' },
+                    { value: 'gpt-4-turbo', text: 'gpt-4-turbo' },
+                    { value: 'gpt-4', text: 'gpt-4' },
+                    { value: 'gpt-3.5-turbo', text: 'gpt-3.5-turbo' }
+                ];
+
+                options.forEach(option => {
+                    const isSelected = option.value === selectedModel ? 'selected' : '';
+                    subModelSelect.innerHTML += `<option value="${option.value}" ${isSelected}>${option.text}</option>`;
+                });
+            }
+            else if (provider === 'anthropic') {
+                const options = [
+                    { value: 'claude-2', text: 'claude-2' },
+                    { value: 'claude-1.3', text: 'claude-1.3' },
+                    { value: 'claude-1', text: 'claude-1' },
+                    { value: 'claude-instant-v1', text: 'claude-instant-v1' },
+                    { value: 'claude-3-sonnet-20240229', text: 'claude-3-sonnet-20240229' },
+                    { value: 'claude-3-codex-20240229', text: 'claude-3-codex-20240229' },
+                    { value: 'claude-3-haiku-20240307', text: 'claude-3-haiku-20240307' },
+                ];
+                options.forEach(option => {
+                    const isSelected = option.value === selectedModel ? 'selected' : '';
+                    subModelSelect.innerHTML += `<option value="${option.value}" ${isSelected}>${option.text}</option>`;
+                });
+            }
+            else if (provider === 'cohere') {
+                const options = [
+                    { value: 'command-r', text: 'command-r' },
+                    { value: 'command-r-plus', text: 'command-r-plus' },
+
+            ];
+            options.forEach(option => {
+                    const isSelected = option.value === selectedModel ? 'selected' : '';
+                    subModelSelect.innerHTML += `<option value="${option.value}" ${isSelected}>${option.text}</option>`;
+                });
+            }
+            else if (provider === 'fireworks') {
+                const options = [
+                    { value: 'accounts/fireworks/models/firefunction-v2', text: 'firefunction-v2' },
+                    { value: 'accounts/fireworks/models/mixtral-8x7b-instruct', text: 'mixtral-8x7b-instruct' },
+                    { value: 'accounts/fireworks/models/mixtral-8x22b-instruct', text: 'mixtral-8x22b-instruct' },
+                    { value: 'accounts/fireworks/models/llama-v3-70b-instruct', text: 'llama-v3-70b-instruct' },
+                    { value: 'accounts/fireworks/models/bleat-adapter', text: 'bleat-adapter' },
+
+            ];
+            options.forEach(option => {
+                    const isSelected = option.value === selectedModel ? 'selected' : '';
+                    subModelSelect.innerHTML += `<option value="${option.value}" ${isSelected}>${option.text}</option>`;
+                });
+            }
+            else if (provider === 'google') {
+                const options = [
+                    { value: 'models/gemini-1.5-pro', text: 'gemini-1.5-pro' },
+                    { value: 'models/gemini-1.0-pro', text: 'gemini-1.0-pro' },
+                    { value: 'models/chat-bison', text: 'chat-bison' },
+                    { value: 'models/text-bison', text: 'text-bison' },
+                    { value: 'models/text-unicorn', text: 'text-unicorn' },
+                    { value: 'models/gemini-1.5-flash', text: 'gemini-1.5-flash' },
+            ];
+            options.forEach(option => {
+                    const isSelected = option.value === selectedModel ? 'selected' : '';
+                    subModelSelect.innerHTML += `<option value="${option.value}" ${isSelected}>${option.text}</option>`;
+                });
+            }
+            else if (provider === 'together-meta') {
+                const options = [
+                    { value: 'meta-llama/Llama-2-70b-chat-hf', text: 'Llama-2-70b-chat-hf' },
+                    { value: 'meta-llama/Llama-2-13b-chat-hf', text: 'Llama-2-13b-chat-hf' },
+                    { value: 'meta-llama/Llama-2-7b-chat-hf', text: 'Llama-2-7b-chat-hf' },
+                    { value: 'meta-llama/Llama-3-8b-chat-hf', text: 'Llama-3-8b-chat-hf' },
+                    { value: 'meta-llama/Llama-3-70b-chat-hf', text: 'Llama-3-70b-chat-hf' },
+                    { value: 'meta-llama/Meta-Llama-3-8B-Instruct-Turbo', text: 'Meta-Llama-3-8B-Instruct-Turbo' },
+                    { value: 'meta-llama/Meta-Llama-3-70B-Instruct-Turbo', text: 'Meta-Llama-3-70B-Instruct-Turbo' },
+                    { value: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo', text: 'Meta-Llama-3.1-8B-Instruct-Turbo' },
+                    { value: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo', text: 'Meta-Llama-3.1-70B-Instruct-Turbo' },
+                    { value: 'meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo', text: 'Meta-Llama-3.1-405B-Instruct-Turbo' },
+                    
+
+            ];
+            options.forEach(option => {
+                    const isSelected = option.value === selectedModel ? 'selected' : '';
+                    subModelSelect.innerHTML += `<option value="${option.value}" ${isSelected}>${option.text}</option>`;
+                });
+            }
+            else if (provider === 'together-nous') {
+                const options = [
+                    { value: 'NousResearch/Nous-Capybara-7B-V1p9', text: 'Nous-Capybara-7B-V1p9' },
+                    { value: 'NousResearch/Nous-Hermes-2-Mistral-7B-DPO', text: 'Nous-Hermes-2-Mistral-7B-DPO' },
+                    { value: 'NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO', text: 'Nous-Hermes-2-Mixtral-8x7B-DPO' },
+                    { value: 'NousResearch/Nous-Hermes-2-Mixtral-8x7B-SFT', text: 'Nous-Hermes-2-Mixtral-8x7B-SFT' },
+                    { value: 'NousResearch/Nous-Hermes-llama-2-7b', text: 'Nous-Hermes-llama-2-7b' },
+                    { value: 'NousResearch/Nous-Hermes-Llama2-13b', text: 'Nous-Hermes-Llama2-13b' },
+                    { value: 'NousResearch/Nous-Hermes-2-Yi-34B', text: 'Nous-Hermes-2-Yi-34B' },
+                    
+
+            ];
+            options.forEach(option => {
+                    const isSelected = option.value === selectedModel ? 'selected' : '';
+                    subModelSelect.innerHTML += `<option value="${option.value}" ${isSelected}>${option.text}</option>`;
+                });
+            }
+            else if (provider === 'together-qwen') {
+                const options = [
+                    { value: 'Qwen/Qwen1.5-0.5B-Chat', text: '1.5-0.5B-Chat' },
+                    { value: 'Qwen/Qwen1.5-1.8B-Chat', text: '1.5-1.8B-Chat' },
+                    { value: 'Qwen/Qwen1.5-4B-Chat', text: '1.5-4B-Chat' },
+                    { value: 'Qwen/Qwen1.5-7B-Chat', text: '1.5-7B-Chat' },
+                    { value: 'Qwen/Qwen1.5-14B-Chat', text: '1.5-14B-Chat' },
+                    { value: 'Qwen/Qwen1.5-32B-Chat', text: '1.5-32B-Chat' },
+                    { value: 'Qwen/Qwen1.5-72B-Chat', text: '1.5-72B-Chat' },
+                    { value: 'Qwen/Qwen1.5-110B-Chat', text: '1.5-110B-Chat' },
+                    { value: 'Qwen/Qwen2-72B-Instruct', text: '2-72B-Instruct' },
+                    
+                    
+
+            ];
+            options.forEach(option => {
+                    const isSelected = option.value === selectedModel ? 'selected' : '';
+                    subModelSelect.innerHTML += `<option value="${option.value}" ${isSelected}>${option.text}</option>`;
+                });
+            }
+
+            else if (provider === 'together') {
+                const options = [
+                    { value: 'zero-one-ai/Yi-34B-Chat', text: 'zero-one-ai/Yi-34B-Chat' },
+                    { value: 'Austism/chronos-hermes-13b', text: 'Austism/chronos-hermes-13b' },
+                    { value: 'cognitivecomputations/dolphin-2.5-mixtral-8x7b', text: 'cognitivecomputations/dolphin-2.5-mixtral-8x7b' },
+                    { value: 'databricks/dbrx-instruct', text: 'databricks/dbrx-instruct' },
+                    { value: 'deepseek-ai/deepseek-coder-33b-instruct', text: 'deepseek-ai/deepseek-coder-33b-instruct' },
+                    { value: 'deepseek-ai/deepseek-llm-67b-chat', text: 'deepseek-ai/deepseek-llm-67b-chat' },
+                    { value: 'garage-bAInd/Platypus2-70B-instruct', text: 'garage-bAInd/Platypus2-70B-instruct' },
+                    { value: 'Gryphe/MythoMax-L2-13b', text: 'Gryphe/MythoMax-L2-13b' },
+                    { value: 'lmsys/vicuna-13b-v1.5', text: 'lmsys/vicuna-13b-v1.5' },
+                    { value: 'lmsys/vicuna-7b-v1.5', text: 'lmsys/vicuna-7b-v1.5' },
+                    { value: 'openchat/openchat-3.5-1210', text: 'openchat/openchat-3.5-1210' },
+                    { value: 'Snowflake/snowflake-arctic-instruct', text: 'Snowflake/snowflake-arctic-instruct' },
+                    { value: 'togethercomputer/Llama-2-7B-32K-Instruct', text: 'togethercomputer/Llama-2-7B-32K-Instruct' },
+                    { value: 'togethercomputer/RedPajama-INCITE-Chat-3B-v1', text: 'togethercomputer/RedPajama-INCITE-Chat-3B-v1' },
+                    { value: 'togethercomputer/RedPajama-INCITE-7B-Chat', text: 'togethercomputer/RedPajama-INCITE-7B-Chat' },
+                    { value: 'togethercomputer/StripedHyena-Nous-7B', text: 'togethercomputer/StripedHyena-Nous-7B' },
+                    { value: 'Undi95/Toppy-M-7B', text: 'Undi95/Toppy-M-7B' },
+                    { value: 'WizardLM/WizardLM-13B-V1.2', text: 'WizardLM/WizardLM-13B-V1.2' },
+
+            ];
+            options.forEach(option => {
+                    const isSelected = option.value === selectedModel ? 'selected' : '';
+                    subModelSelect.innerHTML += `<option value="${option.value}" ${isSelected}>${option.text}</option>`;
+                });
+            }
+            else if (provider === 'mistral') {
+                const options = [
+                    { value: 'mistral-large-latest', text: 'mistral-large-latest' },
+                    { value: 'open-mistral-nemo', text: 'open-mistral-nemo' },
+                    { value: 'open-mistral-7b', text: 'open-mistral-7b' },
+                    { value: 'open-mixtral-8x7b', text: 'open-mixtral-8x7b' },
+                    { value: 'open-mixtral-8x22b', text: 'open-mixtral-8x22b' },
+                    
+            ];
+            options.forEach(option => {
+                    const isSelected = option.value === selectedModel ? 'selected' : '';
+                    subModelSelect.innerHTML += `<option value="${option.value}" ${isSelected}>${option.text}</option>`;
+                });
+            }
+            
+
+        }
+
+
+
+        document.getElementById('addBlockButton').addEventListener('click', function () {
+            blockCount++;
+            addBlockWithListener(blockCount);
+        });
+
+
+        
+
+        
+
+        function autoResize(textarea) {
+        textarea.style.height = 'auto'; 
+        textarea.style.height = (textarea.scrollHeight) + 'px'; 
+        }
+
+    document.addEventListener('DOMContentLoaded', (event) => {
+        var bot_name_popup = document.getElementById('bot_name_popup');
+        var bot_popup_btn = document.getElementById('open_bot_popup');
+        var bot_span = document.getElementById('close_bot_popup');
+        var grounding_popup = document.getElementById('upload_popup');
+        var grounding_popup_btn = document.getElementById('open_upload_popup');
+        var grounding_span = document.getElementById('close_upload_popup');
+        
+        if (bot_popup_btn) {
+            bot_popup_btn.onclick = function() {
+                bot_name_popup.classList.remove('hidden');
+            }
+        }
+
+        if (bot_span) {
+            bot_span.onclick = function() {
+                bot_name_popup.classList.add('hidden');
+            }
+        }
+
+        if (grounding_popup_btn) {
+            grounding_popup_btn.onclick = function() {
+                grounding_popup.classList.remove('hidden');
+            }
+        }
+
+        if (grounding_span) {
+            grounding_span.onclick = function() {
+                grounding_popup.classList.add('hidden');
+            }
+        }
+
+        window.onclick = function(event) {
+            if (event.target == bot_name_popup) {
+                bot_name_popup.classList.add('hidden');
+            }
+            if (event.target == grounding_popup) {
+                grounding_popup.classList.add('hidden');
+            }
+        }
+    });
+
+    function showFlashMessages(messages) {
+            let messageContent = '';
+            messages.forEach(message => {
+                const [category, msg] = message;
+                messageContent += `<div class="p-4 mb-4 text-sm text-${category === 'error' ? 'red' : 'green'}-800 rounded-lg bg-${category === 'error' ? 'red' : 'green'}-100 dark:bg-gray-800 dark:text-${category === 'error' ? 'red' : 'green'}-400" role="alert">${msg}</div>`;
+            });
+
+            document.getElementById('flashMessageContent').innerHTML = messageContent;
+            document.getElementById('flashModal').classList.remove('hidden');
+        }
+
+        function closeFlashModal() {
+            document.getElementById('flashModal').classList.add('hidden');
+        }
+    
+    </script>
+</body>
+</html>
